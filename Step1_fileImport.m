@@ -135,7 +135,7 @@ for x = 2:1:length(NormTime)
     NormTime(x,1) = NormTime((x-1),1)+timeModifier;
 end
 %% Clear temporary variables
-clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y z j complete;
+clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y z j complete textFileName timeModifier;
 
 save(t_saveFileAs, '-regexp', '^(?!t_.*$).')
 save(t_saveFileAs2, '-regexp', '^(?!t_.*$).')
