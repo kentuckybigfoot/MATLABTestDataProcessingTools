@@ -5,7 +5,7 @@ clear
 format long;
 
 %Process Mode Variables
-ProcessFileName              = '..\[Filter]FS Testing - ST2 - Test 1 - 04-01-16.mat';
+ProcessFileName              = '..\[Filter]FS Testing - ST2 - Test 2 - 04-07-16.mat';
 ProcessRealName              = 'Full Scale Test';
 ProcessCodeName              = 'FST-ST2-Mar27-1';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
@@ -198,25 +198,25 @@ if ProcessBeamRotation == true
     %Slope for wirepots at the pivot rod.
     m13 = (wp(1,6)*sin(wpAngles(1,8)) - 0)/(wp(1,6)*cos(wpAngles(1,8)) - 2);
     
-    for i = 1:1:size(wp,1
+    for i = 1:1:size(wp,1)
         %Compare current angle between sides a & b (angle gamma) to the
         %initial angle.
-        beamRotation(i,1) = abs(wpAngles(i, 3) - beamInitialAngle1);
-        beamRotation(i,2) = abs(wpAngles(i, 6) - beamInitialAngle2);
+        beamRotation(i,1) = wpAngles(i, 3) - beamInitialAngle1;
+        beamRotation(i,2) = wpAngles(i, 6) - beamInitialAngle2;
         beamRotation(i,3) = abs(wpAngles(i, 9) - beamInitialAngle3);
         
         %Current slope of the triangle median for the top of the beam,
         %bottom of the beam, and pivot rod, respectively.
         m21 = (wp(i,7)*sin(wpAngles(i,2)) - 0)/(wp(i,7)*cos(wpAngles(i,2)) - 5.625);
         m22 = (wp(i,2)*sin(wpAngles(i,5)) - 0)/(wp(i,2)*cos(wpAngles(i,5)) - 5.75);
-        m23 = (wp(i,6)*sin(wpAngles(i,8)) - 0)/(wp(i,2)*cos(wpAngles(i,8)) - 2);
+        m23 = (wp(i,6)*sin(wpAngles(i,8)) - 0)/(wp(i,6)*cos(wpAngles(i,8)) - 2);
         
         %Calculate the angle between the initial and current median for the
         %top of the beam, bottom of the beam, and pivot rod, respectively.
-        beamRotation(i,4) = atan2((m12 - m22),(1 + m12*m22));
-        beamRotation(i,5) = atan2((m12 - m22),(1 + m12*m22));
-        beamRotation(i,6) = atan2((m13 - m23),(1 + m13*m23));
-        
+        beamRotation(i,4) = atan2((m21 - m11),(1 + m11*m21));
+        beamRotation(i,5) = atan2((m22 - m12),(1 + m12*m22));
+        beamRotation(i,6) = atan2((m23 - m13),(1 + m13*m23));
+      
         %Progress indicator. atan2 take considerable time to execute and
         %this give me a hint of how close to being finished matlab is.
         percentDone = 100 * i / size(wp,1);
@@ -512,6 +512,7 @@ for s = 1:1:size(lcMod,1)
     %mo(s,1) = lc2(s,7)*29.375 - lc2(s,6)*30.1875 - lc2(s,5)*48;
     mo(s,1) = lcMod(s,2)*29.375 - lcMod(s,1)*30.1875;
     mo(s,2) = lc2(s,7)*29.375 - lc2(s,6)*30.1875;
+    mo(s,3) = - lc2(s,7)*29.375 + lc2(s,6)*30.1875;
 end
 figure
 plot(offset(beamRotation(:,3)), mo(:,2))
