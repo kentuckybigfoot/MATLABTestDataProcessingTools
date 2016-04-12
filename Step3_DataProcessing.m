@@ -15,6 +15,7 @@ ProcessConsolidateSGs        = true;
 ProcessConsolidateWPs        = true;
 ProcessConsolidateLCs        = true;
 ProcessWPAngles              = true;
+ProcessWPCoords              = true;
 ProcessWPHeights             = true;
 processWPHeighDistances      = false;
 processWPCoordinates         = false;
@@ -25,6 +26,26 @@ ProcessForces                = true;
 ProcessMoments               = true;
 ProcessGarbageCollection     = false;
 ProcessOutputPlots           = false;
+
+% The very end where the pivot rests serves as reference for all
+% measurements. All measurements are assumed to start at the extreme end of
+% the column below the pivot point in the center of the web. Dimensions are
+% given in (x,y)and represent the center of the hook at the end of the
+% wire. Dimensions for the wire pots can be found in Fig. 2 of page 68
+% (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
+
+wp11Pos = [(13+7/8)+0.50+0.39 54.25-(5.07-2.36)];
+wp12Pos = [(13+7/8)+0.375+0.39 22+1.5+5.07];
+wp21Pos = [0 0];
+wp22Pos = [0 0];
+wp31Pos = [0 0];
+wp32Pos = [0 0];
+wp41Pos = [(9/16)+1.5+5.07 48.5];
+wp42Pos = [(9/16)+1.5+5.07 32.5];
+D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2));
+D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2));
+D3 = 0;
+D4 = 0;
 
 %Constants
 modulus = 29000; %Modulus of elasticity (ksi)
@@ -113,7 +134,7 @@ if ProcessWPAngles == true
     
     disp('Processing angles');
     if runParallel == true
-        [wpAngles, wpAnglesDeg] = procWPAnglesPar(wp);
+        [wpAngles, wpAnglesDeg] = procWPAnglesPar(wp, [D1, D2, D3, D4]);
     else
         [wpAngles, wpAnglesDeg] = procWPAngles(wp);
     end
@@ -151,6 +172,45 @@ if ProcessWPAngles == true
         end
     end
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%CALCULATE X & Y COORDINATES FOR C VERTEX OF WIRE POT TRIANGLES           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%See "help lawOfCos" for angle orientation information.
+
+%Determine XY of triangles using both angles and compare them as a fail
+%safe. Comparison is only carried out to three decimal places.
+%Realistically the wire pots are likely only moderatly accurate to the
+%second decimal place but a third helps with round-off error in floating
+%math.
+
+%Coded in accordance to wire-pot configuration in place 04/01/16
+if ProcessWPCoords == true
+    for r = 1:1:size(wp,1)
+        %WP Group 1
+        wpCoords(r,1:2) = [wp11Pos(1,1)+wp(r,1)*cos(((3/2)*pi)-wpAngles(r,1)) wp11Pos(1,2)-wp(r,1)*sin(((3/2)*pi)-wpAngles(r,1))];
+        wpCoords(r,3:4) = [wp41Pos(1,1)+wp(r,7)*cos(wpAngles(r,2)) wp41Pos(1,2)+wp(r,7)*sin(wpAngles(r,2))];
+ 
+        %WP Group 2
+        wpCoords(r,5:6) = [wp42Pos(1,1)+wp(r,8)*sin(wpAngles(r,4)) wp42Pos(1,2)+wp(r,8)*sin(-wpAngles(r,4))];
+        wpCoords(r,7:8) = [wp12Pos(1,1)+wp(r,2)*cos(pi-wpAngles(r,5)) wp12Pos(1,2)+wp(r,2)*cos(wpAngles(r,5))];
+        
+        %wpCoords(r,13) = (wpCoords(r,6) - wpCoords(r,2))/(wpCoords(r,5) - wpCoords(r,1));
+        %wpCoords(r,14) = (wpCoords(r,8) - wpCoords(r,4))/(wpCoords(r,7) - wpCoords(r,3));
+        %WP Group 2
+       % wpCoords(r,9:10) = [wp(r,5)*cos(wpAngles(r,7)) wp(r,5)*sin(wpAngles(r,7))];
+        %wpCoords(r,11:12) = [wp(r,6)*cos(wpAngles(r,8)) wp(r,6)*sin(wpAngles(r,8))];
+        
+        %{
+        if any(round(wpCoords(r,1:2),3) ~= round(wpCoords(r,3:4),3))
+            error('Danger, Will Robinson! Angles #%d for WPG1 do not match (%f,%f,%f,%f)',r,wpCoords(r,1), wpCoords(r,2), wpCoords(r,3), wpCoords(r,4));
+        end
+        %}
+        
+    end
+end
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY                     %
@@ -216,9 +276,18 @@ if ProcessBeamRotation == true
         beamRotation(i,4) = atan2((m21 - m11),(1 + m11*m21));
         beamRotation(i,5) = atan2((m22 - m12),(1 + m12*m22));
         beamRotation(i,6) = atan2((m23 - m13),(1 + m13*m23));
+        
+        %As of 04/01/02 there are two wire pots on the top flange of the
+        %column and two wire pots on the bottom flange. These wire pots at
+        %each level set parallel to one another and by comparing their
+        %initial elongation to their current elongation the angle of
+        %rotation can be determined. WP4-1 and WP4-2 sit on the top flange
+        %while WP2-1 and WP2-2 sit on the bottom.
+        
       
-        %Progress indicator. atan2 take considerable time to execute and
-        %this give me a hint of how close to being finished matlab is.
+        %Progress indicator. atan2 and the other trig functions take 
+        %considerable time to execute and this give me a hint of how
+        %close to being finished matlab is.
         percentDone = 100 * i / size(wp,1);
         msg = sprintf('Percent done: %3.1f', percentDone);
         fprintf([reverseStr, msg]);
