@@ -27,6 +27,14 @@ if numArg < 5
     return
 end
 
+%Most commonly plotting against time so this replaces having to type a
+%variable for time when plotting multiple things on one figure.
+sizex = size(x);
+
+if sizex(2) < size(y,2) && sizex(2) == 1
+    x = repmat(x, 1, sizex(2));
+end
+
 h = figure();
 plot(x,y);
 title(plotName);
