@@ -1,14 +1,14 @@
-function [ wpAngles, wpAnglesDeg ] = procWPAnglesPar( wp )
+function [ wpAngles, wpAnglesDeg ] = procWPAnglesPar( wp, dist )
 %UNTITLED3 Summary of this function goes here
 %   Detailed explanation goes here
 
 parfor i = 1:1:size(wp,1)
     %Wirepot Set 1
-    wp1cDist = 11.25;%sqrt(wp(50,7)^2 + wp(50,1)^2); %Dist b/t WPs CTC.
+    wp1cDist = dist(1);%11.25;%sqrt(wp(50,7)^2 + wp(50,1)^2); %Dist b/t WPs CTC.
     [wp1Angles1(i,1) wp1Angles2(i,1) wp1Angles3(i,1)] = lawOfCos([wp(i,7)+2.71654 wp(i,1)+2.71654 wp1cDist]);
     
     %Wirepot Set 2
-    wp2cDist = 11.5;%sqrt(wp(50,2)^2 + wp(50,8)^2); %Dist b/t WPs CTC.
+    wp2cDist = dist(2)%11.5;%sqrt(wp(50,2)^2 + wp(50,8)^2); %Dist b/t WPs CTC.
     [wp2Angles1(i,1) wp2Angles2(i,1) wp2Angles3(i,1)] = lawOfCos([wp(i,2)+2.71654 wp(i,8)+2.71654 wp2cDist]);
     
     %Wirepot Set 3
