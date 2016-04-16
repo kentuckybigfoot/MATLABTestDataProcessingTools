@@ -1,8 +1,10 @@
 function [  ] = smartPlot( x, y, plotName, plotXlabel, plotYlabel, varargin)
 %smartPlot Power-user plot function to spare repetitive code
 %   Specify x and y as either a variable or array of variables. Required
-%   for operation is a plot title, xlabel title, and ylabel title. Accepts
-%   the following additional commands:
+%   for operation is a plot title, xlabel title, and ylabel title. Can plot
+%   multiple y values against a single x value. Accepts the following
+%   additional commands:
+%
 %   - 'visible' - Turns off the visibility of the plot/figure
 %   - 'grid'    - Adds major and minor grids to plot
 %   - 'legend'  - Adds legend to the graph is posistion that covers least
@@ -15,6 +17,10 @@ function [  ] = smartPlot( x, y, plotName, plotXlabel, plotYlabel, varargin)
 %                 immedietly following the 'save' parameter should be the 
 %                 file name.
 %   - 'details' - Displays completion message when smartPlot fxn finishes.
+
+%Pick up naming information without cluttering up fxn parameters
+global ProcessRealName
+global ProcessCodeName
 
 numArg = nargin;
 legendOn = false;
@@ -37,7 +43,7 @@ end
 
 h = figure();
 plot(x,y);
-title(plotName);
+title({ProcessRealName,plotName});
 xlabel(plotXlabel);
 ylabel(plotYlabel);
 
@@ -82,8 +88,8 @@ end
 %function. This prevents plot from saving before all requested features are
 %present
 if savePlot == true
-    saveas(gcf, savePlotName, 'png')
-    saveas(gcf, savePlotName, 'svg')
+    saveas(gcf, fullfile(ProcessCodeName,savePlotName), 'png')
+    saveas(gcf, fullfile(ProcessCodeName,savePlotName), 'svg')
 end
 
 %Status function. Saving a plot can take some time therefore it's good to
