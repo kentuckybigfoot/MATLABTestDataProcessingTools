@@ -5,6 +5,9 @@ function [  ] = smartPlot( x, y, plotName, plotXlabel, plotYlabel, varargin)
 %   the following additional commands:
 %   - 'visible' - Turns off the visibility of the plot/figure
 %   - 'grid'    - Adds major and minor grids to plot
+%   - 'legend'  - Adds legend to the graph is posistion that covers least
+%                 amount of data. Parameter immedietly following 'legend'
+%                 should be the legend contents.
 %   - 'ticks'   - Removes scientific notation from axis but breaks
 %                 automatic tick mark labelling when zooming/panning. see
 %                 http://goo.gl/1w2tkf for more information.
@@ -14,9 +17,11 @@ function [  ] = smartPlot( x, y, plotName, plotXlabel, plotYlabel, varargin)
 %   - 'details' - Displays completion message when smartPlot fxn finishes.
 
 numArg = nargin;
+legendOn = false;
 savePlot = false;
 savePlotName = '';
 showDetails = false;
+
 if numArg < 5
     disp('Not enough input variables');
     return
@@ -31,7 +36,7 @@ ylabel(plotYlabel);
 if nargin > 5
     for r = 1:1:size(varargin,2)
         
-        if savePlot == true && r == (savePlotr + 1)
+        if savePlot == true && r == (savePlotr + 1) || legendOn == true && r == (legendr + 1)
             continue %So we don't try and process the filename as a param
         end
         
@@ -41,6 +46,10 @@ if nargin > 5
             case 'grid'
                 grid on
                 grid minor
+            case 'legend'
+                legendOn = true;
+                legendr = r;
+                legend(varargin{r+1}, 'Location', 'best');
             case 'ticks'
                 set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
                 set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
