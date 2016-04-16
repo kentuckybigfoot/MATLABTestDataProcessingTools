@@ -4,10 +4,13 @@ clear
 
 format long;
 
+global ProcessRealName %So we can pick this up in function calls
+global ProcessCodeName %So we can pick this up in function calls
+
 %Process Mode Variables
-ProcessFileName              = '..\[Filter]FS Testing - ST2 - Test 2 - 04-07-16.mat';
-ProcessRealName              = 'Full Scale Test';
-ProcessCodeName              = 'FST-ST2-Mar27-1';
+ProcessFileName              = 'FS Testing - ST2 - Test 2 - 04-15-16';
+ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 04-15-16';
+ProcessCodeName              = 'FST-ST2-Apr15-2';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
 localAppend                  = false;
@@ -15,17 +18,18 @@ ProcessConsolidateSGs        = true;
 ProcessConsolidateWPs        = true;
 ProcessConsolidateLCs        = true;
 ProcessWPAngles              = true;
-ProcessWPCoords              = true;
-ProcessWPHeights             = true;
+ProcessWPCoords              = false;
+ProcessWPHeights             = false;
 processWPHeighDistances      = false;
 processWPCoordinates         = false;
+%processDAC                   = true;
 ProcessBeamRotation          = true;
 ProcessStrainProfiles        = true;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
 ProcessMoments               = true;
 ProcessGarbageCollection     = false;
-ProcessOutputPlots           = false;
+ProcessOutputPlots           = true;
 
 % The very end where the pivot rests serves as reference for all
 % measurements. All measurements are assumed to start at the extreme end of
@@ -63,7 +67,16 @@ else
     yGaugeLocationsExpanded = [stMidHeight; 3; 0; -3; -stMidHeight; -9];
 end
 
-load(ProcessFileName);
+%Load data. Checks if IMU data exists and processes it if so. This is more
+%of a legacy feature since IMU was not added until months after testing
+%began.
+filename1 = sprintf('[RotationData]%s.mat',ProcessFileName);
+    
+load(sprintf('[Filter]%s.mat',ProcessFileName));
+
+if exist(filename1, 'file') == 2
+    load(filename1);
+end
 
 
 
@@ -125,7 +138,21 @@ if ProcessConsolidateLCs == true
     end
     disp('File successfully appended.');
 end
+%{
+for r = 1:1:length(A)
+    DACTime(r,1) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)])/1000;
+end
 
+for s = 1:1:length(NormTime)
+    finder = DACTime(DACTime >= NormTime(s) & DACTime < NormTime(s));
+    finderSize = size(finder);
+    if finderSize(1) == 0 && finderSize(2) == 1
+        keys(s) = 0;
+    else
+        key(s) = DACTime(DACTime >= NormTime(s) & DACTime < NormTime(s));
+    end
+end
+%}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE EACH ANGLE OF WIRE POTENTIOMETER TRIANGLES                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -232,6 +259,18 @@ if ProcessWPHeights == true
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%PROCESS DAC DATA AND RELATE TO IMU DATA                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%{
+for r = 1:1:length(A)
+    DACTime(r) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)])/1000;
+end
+
+for s = 1:1:length(NormTime)
+    key(s) = find(DACTime >= NormTime(s) && DACTime < NormTime(s));
+end
+   %} 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE ROTATION USING WIREPOT DATA                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -606,801 +645,109 @@ scatter3(NormTime, repmat(xLocation(3,2),57046,1), (10^-6)*offset(sg(:,3)))
 scatter3(NormTime, repmat(xLocation(4,2),57046,1), (10^-6)*offset(sg(:,4)))
 %}
 if ProcessOutputPlots == true
-    disp('Creating beam rotation plots.');
-    count = 0;
+    r1 = 2000;
+    r2 = length(sg);
+    %Check if folder to save these in exists and create folder if it doesnt
+    if exist(fullfile('..\',ProcessCodeName)) == 0
+        mkdir('..\',ProcessCodeName);
+    end
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,beamAngleDiff,'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs from Initial Angle b\\t Beam WPs'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,round(beamAngleDiff,3),'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs from Initial Angle b\\t Beam WPs (3 Dec. Rounding)'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,round(beamAngleDiff,4),'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs from Initial Angle b\\t Beam WPs (4 Dec. Rounding)'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,beamRotation,'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs Resultant from Initial Angle b\\t Beam WPs Resultant'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,round(beamRotation,3),'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs Resultant from Initial Angle b\\t Beam WPs Resultant (3 Dec. Rounding)'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime,round(beamRotation,4),'.','MarkerSize',3)
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Departure of Angle b\\t Beam WPs Resultant from Initial Angle b\\t Beam WPs Resultant (4 Dec. Rounding)'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Rotation (rad)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    %Strain gauge array positions change depending on shear tab. this
+    %assures that the correct column strain gauges are plotted as desired.
+    if ProcessShearTab == '2' || ProcessShearTab == '4'
+        plotArrayCol = [offset(sg(r1:r2,7)) offset(sg(r1:r2,8)) offset(sg(r1:r2,9)) offset(sg(r1:r2,10))];
+    else
+        plotArrayCol = [offset(sg(r1:r2,6)) offset(sg(r1:r2,7)) offset(sg(r1:r2,8)) offset(sg(r1:r2,9))];
+    end
     
-    disp('Creating wirepot plots')
+    %%%% Strain Gauges %%%%
+    smartPlot(NormTime(r1:r2), [sg(r1:r2,1) sg(r1:r2,2) sg(r1:r2,3) sg(r1:r2,4)], ...
+        'Strain Gauge Data on Shear Tab', 'Time (sec)', 'Strain (uStrain)', ...
+        'legend', {'SG1','SG2','SG3','SG4'}, 'visible', 'grid', 'save', 'sg-st');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(wp(:,1)), NormTime, offset(wp(:,2)), NormTime, offset(wp(:,3)), NormTime, offset(wp(:,4)), NormTime, offset(wp(:,5)), NormTime, offset(wp(:,6)), NormTime, offset(wp(:,7)), NormTime, offset(wp(:,8)), NormTime, offset(wp(:,9)), NormTime, offset(wp(:,10)), NormTime, offset(wp(:,11)), NormTime, offset(wp(:,12)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Elongation of Wirepots'; ProcessRealName})
-    legend('WP1-1', 'WP1-2', 'WP2-1', 'WP2-1', 'WP3-1', 'WP3-2', 'WP4-1', 'WP4-2', 'WP5-1', 'WP6-1', 'WP6-2', 'MTS LVDT', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(sg(r1:r2,1)) offset(sg(r1:r2,2)) offset(sg(r1:r2,3)) offset(sg(r1:r2,4))], ...
+        'Offset Strain Gauge Data on Shear Tab', 'Time (sec)', 'Strain (uStrain)', ...
+        'legend', {'SG1','SG2','SG3','SG4'}, 'visible', 'grid', 'save', 'sg-st-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, wpAngleHeight(:,1), NormTime, wpAngleHeight(:,2), NormTime, wpAngleHeight(:,3), NormTime, wpAngleHeight(:,4))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Elongation of Wirepot Groups Using Angle Height'; ProcessRealName})
-    legend('WP Group 1', 'WP Group 2', 'WP Group 3', 'WP Group 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), plotArrayCol, ...
+        'Offset Column Strain Gauges', 'Time (sec)', 'Strain (uStrain)', ...
+        'legend', {'SG19','SG20','SG21','SG22'}, 'visible', 'grid', 'save', 'sg-col-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(wpAngleHeight(:,1)), NormTime, normfxn(wpAngleHeight(:,2)), NormTime, normfxn(wpAngleHeight(:,3)), NormTime, normfxn(wpAngleHeight(:,4)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Elongation of Wirepot Groups Using Angle Height'; ProcessRealName})
-    legend('WP Group 1', 'WP Group 2', 'WP Group 3', 'WP Group 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    %%%% Load Cells %%%%
+    smartPlot(NormTime(r1:r2), [lc(r1:r2,1) lc(r1:r2,2) lc(r1:r2,3) lc(r1:r2,4)], ...
+        'Reaction Block Load Cells', 'Time (sec)', 'Force (lbf)', ...
+        'legend', {'LC1','LC2','LC3','LC4'}, 'grid', 'visible', 'save', 'lc');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(wp(:,10)), NormTime, normfxn(wp(:,11)), NormTime, normfxn(wp(:,12)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Changes in Distances b\\t RXN Block Ends Against MTS LVDT'; ProcessRealName})
-    legend('WP6-2', 'WP 6-1', 'MTS LVDT', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(lc(r1:r2,1)) offset(lc(r1:r2,2)) offset(lc(r1:r2,3)) offset(lc(r1:r2,4))], ...
+        'Offset Reaction Block Load Cells', 'Time (sec)', 'Force (lbf)', ...
+        'legend', {'LC1','LC2','LC3','LC4'}, 'visible', 'grid', 'save' ,'lc-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(wpAngleHeight(:,1)), NormTime, offset(wpAngleHeight(:,2)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Vert. and Horiz. Linear Displacements of Column'; ProcessRealName})
-    legend('WP G1 (Vert)', 'WP G2 (Horiz)', 'Location', 'Best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(lc(r1:r2,1)) offset(lc(r1:r2,2)) offset(lc(r1:r2,3)) offset(lc(r1:r2,4)), offset(lc(r1:r2,5))], ...
+        'Offset All Load Cells', 'Time (sec)', 'Force (lbf)', ...
+        'legend', {'LC1','LC2','LC3','LC4','MTSLC'}, 'visible', 'grid', 'save', 'lc-all-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, wpAngleHeight(:,3))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Bottom Vertical Linear Displacement of Beam Flange'; ProcessRealName})
-    legend('WP G3', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), offset(lc(r1:r2,5)), ...
+        'Offset Actuator LC', 'Time (sec)', 'Force (lbf)', 'visible', ...
+        'grid', 'save', 'lc-actuator-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, wpAngleHeight(:,4))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Bottom Horizontal Linear Displacement of Beam Flange'; ProcessRealName})
-    legend('WP G4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(lc(r1:r2,6)) offset(lc(r1:r2,7))], ...
+        'Offset Rxn Block Load Cell Groups', 'Time (sec)', 'Force (lbf)', ...
+        'legend', {'LC G1','LC G2'}, 'visible', 'grid', 'save', 'lc-groups-offset');
     
-    plot(NormTime, force(:,1), NormTime, force(:,2), NormTime, force(:,3), NormTime, force(:,4), NormTime, force(:,5))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Force Data From Strain Gauge Readings'; ProcessRealName})
-    legend('1', '2', '3', '4', 'BFFD', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (kip)');
-    grid on
-    grid minor
+    %%%% Angles %%%%
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,1), 'WP Group 1 Rotation (Method 1)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-g1-method1-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, wp(:,9))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Top Horizontal Linear Displacement of Beam Flange'; ProcessRealName})
-    legend('WP G4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,2), 'WP Group 2 Rotation (Method 1)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-g2-method1-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(wpAngleHeight(:,3)), NormTime, offset(wpAngleHeight(:,4)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Bottom Vert. and Horiz. Linear Displacement of Beam'; ProcessRealName})
-    legend('WP G3 (Vert)', 'WP G4 (Horiz)', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,1) beamRotation(r1:r2,2)], ...
+        'WP Group 1 & 2 Rotation (Method 1)', 'Time (sec)', ...
+        'Rotation (rad)', 'grid', 'legend', {'G1 (Top)', 'G2 (Bottom)'}, ...
+        'visible', 'save', 'rotation-g12-method1-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(wpAngleHeight(:,3)), NormTime, offset(wpAngleHeight(:,4)), NormTime, offset(wp(:,9)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Top and Bottom Linear Displacements of Beam'; ProcessRealName})
-    legend('WP G3 (Vert)', 'WP G4 (Horiz)', 'WP 5-1 (Horiz)', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Length (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,4), 'WP Group 1 Rotation (Method 2)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-g1-method2-offset');
     
-    disp('Process Load Cell Graphs')
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,2), 'WP Group 2 Rotation (Method 2)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-g2-method2-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(lc(:,1)), NormTime, offset(lc(:,2)), NormTime, offset(lc(:,3)), NormTime, offset(lc(:,4)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Reaction Block Load Cells'; ProcessRealName})
-    legend('LC 1', 'LC 2', 'LC 3', 'LC 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,4) beamRotation(r1:r2,5)], ...
+        'WP Group 1 & 2 Rotation (Method 2)', 'Time (sec)', ...
+        'Rotation (rad)', 'grid', 'legend', {'G1 (Top)', 'G2 (Bottom)'}, ...
+        'visible', 'save', 'rotation-g12-method2-offset');
     
-    count = count+1;
-    count = count+1;     figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(lc(:,1))), NormTime, normfxn(offset(lc(:,2))), NormTime, normfxn(offset(lc(:,3))), NormTime, normfxn(offset(lc(:,4))))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Offset Reaction Block Load Cells'; ProcessRealName})
-    legend('LC 1', 'LC 2', 'LC 3', 'LC 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    %%%% Wire-pots %%%%
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1))], ...
+        'Offset Wirepot Group 1', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP4-1','WP2-1','WP1-1'},  'visible', 'grid', 'save', 'wp-g1-offset');
     
-    count = count+1;
-    count = count+1;     figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(lc(:,5)), NormTime, offset(lc(:,1)), NormTime, offset(lc(:,2)), NormTime, offset(lc(:,3)), NormTime, offset(lc(:,4)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Reaction Block Load Cells with MTS LC'; ProcessRealName})
-    legend('MTS LC', 'LC 1', 'LC 2', 'LC 3', 'LC 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2))], ...
+        'Offset Wirepot Group 2', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP4-2','WP2-2','WP1-2'}, 'visible', 'grid', 'save', 'wp-g2-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(lc(:,5))), NormTime, normfxn(offset(lc(:,1))), NormTime, normfxn(offset(lc(:,2))), NormTime, normfxn(offset(lc(:,3))), NormTime, normfxn(offset(lc(:,4))))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Offset Reaction Block Load Cells With MTS LC'; ProcessRealName})
-    legend('MTS LC', 'LC 1', 'LC 2', 'LC 3', 'LC 4', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,1)) offset(wp(r1:r2,2))], ...
+        'Offset Vertical Wirepots', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP1-1','WP1-2'}, 'visible', 'grid', 'save', 'wp-vert-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(lc(:,5)), NormTime, offset(lc(:,6)), NormTime, offset(lc(:,7)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Reaction Block Groupings With MTS LC'; ProcessRealName})
-    legend('MTS LC', 'LC G 1', 'LC G 2', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,8))], ...
+        'Offset Horizontal Wirepots (Top Flange)', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP4-1','WP4-2'}, 'visible', 'grid', 'save', 'wp-horztop-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(lc(:,5))), NormTime, normfxn(offset(lc(:,6))), NormTime, normfxn(offset(lc(:,7))))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Offset Reaction Block Load Cells With MTS LC'; ProcessRealName})
-    legend('MTS LC', 'LC G 1', 'LC G 2', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,3)) offset(wp(r1:r2,4))], ...
+        'Offset Horizontal Wirepots (Bottom Flange)', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP2-1','WP2-2'}, 'visible', 'grid', 'save', 'wp-horzbot-offset');
     
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    %plot(NormTime, normfxn(offset(lc(:,5)), NormTime, normfxn(offset(lc(:,6)), NormTime, normfxn(offset(lc(:,7)), NormTime, normfxn(wpOffset(:,12)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Offset RXN Block LCS With MTS LC Against LVDT'; ProcessRealName})
-    legend('MTS LC', 'LC G 1', 'LC G 2', 'MTS LVDT', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Force (lbf)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    disp('Process Strain Gauge, Force, and Moment Graphs')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(sg(:,4)), NormTime, offset(sg(:,1)), NormTime, offset(sg(:,2)), NormTime, offset(sg(:,3)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Shear Tab 1 Offset Strain Gauge Data'; ProcessRealName})
-    legend('SG4', 'SG1', 'SG2', 'SG3', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(sg(:,4))), NormTime, normfxn(offset(sg(:,1))), NormTime, normfxn(offset(sg(:,2))), NormTime, normfxn(offset(sg(:,3))))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Shear Tab 1 Normalized Offset Strain Gauge Data'; ProcessRealName})
-    legend('SG4', 'SG1', 'SG2', 'SG3', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(sg(:,4))), NormTime, normfxn(offset(sg(:,1))), NormTime, normfxn(offset(sg(:,2))), NormTime, normfxn(offset(sg(:,3))), NormTime, normfxn(wp(:,12)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Shear Tab 1 Normalized Offset Strain Gauge Data Against Normalised MTS LVDT'; ProcessRealName})
-    legend('SG4', 'SG1', 'SG2', 'SG3', 'MTS LVDT', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(sg(:,6)), NormTime, offset(sg(:,7)), NormTime, offset(sg(:,8)), NormTime, offset(sg(:,9)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Column Strain Gauge Data'; ProcessRealName})
-    legend('SG19', 'SG20', 'SG21', 'SG22', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, normfxn(offset(sg(:,6))), NormTime, normfxn(offset(sg(:,7))), NormTime, normfxn(offset(sg(:,8))), NormTime, normfxn(offset(sg(:,9))), NormTime, normfxn(wp(:,12)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Normalized Offset Column Strain Gauge Data Against Normalised MTS LVDT'; ProcessRealName})
-    legend('SG19', 'SG20', 'SG21', 'SG22', 'MTS LVDT', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, sg(:,5))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Bolt Strain Gauge'; ProcessRealName})
-    legend('Bolt SG', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, offset(sg(:,5)))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Offset Bolt Strain Gauge'; ProcessRealName})
-    legend('Bolt SG', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('strain (uStrain)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, moment(:,1), NormTime, moment(:,2))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Couple Moment on Shear Tab Using All Strain Gauges'; ProcessRealName})
-    legend('Top Component', 'Bottom Component', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Moment (kip-in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, moment1(:,1), NormTime, moment1(:,2))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Couple Moment on Shear Tab Using Top & Center SGs'; ProcessRealName})
-    legend('Top Component', 'Bottom Component', 'Location', 'best');
-    xlabel('Time (sec)')
-    ylabel('Moment (kip-in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, moment(:,3))
-    %[hAx,hLine1,hLine2] = plotyy(NormTime, moment(:,3), NormTime, wp(:,12))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    %axis([-inf inf -1*max([abs(min(moment(:,3))) abs(min(wp(:,12)))]) max([max(moment(:,3)) max(wp(:,12))])])
-    title({'Moment on Shear Tab Using All Strain Gauges'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Moment (kip-in)');
-    %ylabel(hAx(2),'Displacement (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, moment1(:,3))
-    %[hAx,hLine1,hLine2] = plotyy(NormTime, moment(:,3), NormTime, wp(:,12))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    %axis([-inf inf -1*max([abs(min(moment(:,3))) abs(min(wp(:,12)))]) max([max(moment(:,3)) max(wp(:,12))])])
-    title({'Moment on Shear Tab Using Top and Center SGs'; ProcessRealName})
-    xlabel('Time (sec)')
-    ylabel('Moment (kip-in)');
-    %ylabel(hAx(2),'Displacement (in)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    
-    %{
-    count = count+1;
-    figure('Visible','off','Renderer','painters')
-    plot(NormTime, forceAxial(:,1), NormTime, forceAxial(:,2), NormTime, forceBending(:,1), NormTime, forceBending(:,2), NormTime, forceBending(:,3), NormTime, forceBending(:,4), forceTotal(:,1), NormTime, forceTotal(:,2), NormTime, forceTotal(:,3), NormTime, forceTotal(:,4))
-    set(gca,'XTickLabel',num2str(get(gca,'XTick').'))
-    set(gca,'YTickLabel',num2str(get(gca,'YTick').'))
-    title({'Actual & Maximum Axial Forces'; ProcessRealName})
-    legend('Act. A', 'Max. A', 'Act. B1', 'Act. B2', 'Max. B1', 'Max. B2', 'Act. T1', 'Act. T2', 'Max. T1', 'Max. T2');
-    xlabel('Time (sec)')
-    ylabel('Force (kip)');
-    grid on
-    grid minor
-    saveAsFileName = sprintf('%sFig %d',ProcessCodeName,count);
-    saveas(gcf, saveAsFileName, 'png')
-    %saveas(gcf, saveAsFileName, 'svg')
-    %saveas(gcf, saveAsFileName, 'fig')
-    %}
-    figure('Visible','on')
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1)) ...
+        offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2))], ...
+        'Offset All Beam Rotation Wirepots', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP4-1','WP2-1','WP1-1','WP4-2','WP2-2','WP1-2'}, ...
+        'visible', 'grid', 'save', 'wp-allrot-offset');
 end
-
-
-%{
-figure
-plot(NormTime, offset(sg(:,1), 'b', NormTime, offset(sg(:,2), 'r', NormTime, offset(sg(:,3), 'g'); 
-legend('Bolt 1', 'Bolt 2', 'Bolt 3');
-grid on
-grid minor
-
-figure
-plot(NormTime, offset(LCNormal(:,5), 'b', NormTime, offset(LCNormal(:,6), 'r', NormTime, offset(LCNormal(:,7),'g', NormTime,wpNormal(:,12))
-legend('MTS LC', 'RXN Block 1', 'RXN Block 2', 'MTS LVDT')
-title('Normalized Offset Load Cells Over Normalised LVDT All Against Time');
-grid on
-grid minor
-
-figure
-plot(NormTime, offset(lc(:,5), 'b', NormTime, offset(lc(:,6), 'r', NormTime, offset(lc(:,7),'g')
-legend('MTS LC', 'RXN Block 1', 'RXN Block 2')
-title('Offset Load Cells Against Time');
-grid on
-grid minor
-
-%figure
-%plot(NormTime, offset(lc(:,1), NormTime, offset(lc(:,2), NormTime, offset(lc(:,3), NormTime, offset(lc(:,4))
-
-%figure
-%}
-
-
-%{
-if ProcessCartRotation == true
-    beamInitialResultant = sqrt(wpAngleHeight(1,1)^2 + wpAngleHeight(1,2)^2);
-    beamInitialAngle     = atan(wpAngleHeight(1,2)/wpAngleHeight(1,1));
-    beamInitialAngleDeg  = atand(wpAngleHeight(1,2)/wpAngleHeight(1,1));
-    beamInitialAngleDiff  = (pi/2)-((pi-(wpAngles(1,7)+(pi/2)))+(pi-(wpAngles(1,11)+(pi/2))));
-    beamInitialAngleDiffDeg  = 90-((180-(wpAnglesDeg(1,7)+90))+(180-(wpAnglesDeg(1,11)+90)));
-    
-    disp('begin loop')
-    for i = 1:1:length(wp11)
-        beamResultants(i,1) = sqrt(wpAngleHeight(i,3)^2 + wpAngleHeight(i,4)^2);
-        beamAngles(i,1)     = atan(wpAngleHeight(i,4)/wpAngleHeight(i,3));
-        beamAnglesDeg(i,1)  = atand(wpAngleHeight(i,4)/wpAngleHeight(i,3));
-        beamAngleDiff(i,1)  = (pi/2)-((pi-(wpAngles(i,7)+(pi/2)))+(pi-(wpAngles(i,11)+(pi/2))));
-        beamAngleDiffDeg(i,1)  = 90-((180-(wpAnglesDeg(i,7)+90))+(180-(wpAnglesDeg(i,11)+90)));
-        beamAngleCenterChange(i,1) = round(wp41(i,1)*sind((180-(wpAnglesDeg(i,11)+90))),3);
-  
-        beamRotation(i,1) = beamAngles(i,1) - beamInitialAngle;
-        
-    end 
-%}
-%{        
-
-for i = 2:1:length(wp11)
-    wp3Change(i,1) = wp3Angles(i,2) - wp3Angles(i-1,2);
-end
-for i = 1:1:length(wp11)
-    s = (wp31(i,1) + wp32(i,1) + 4)/2;
-    A = sqrt(s*(s-wp31(i,1))*(s-wp32(i,1))*(s-4));
-    height(i,1) = 2*(A/4);
-end
-
-for i = 1:1:length(wp11)
-    s = (wp41(i,1) + wp42(i,1) + 4)/2;
-    A = sqrt(s*(s-wp41(i,1))*(s-wp42(i,1))*(s-4));
-    height1(i,1) = 2*(A/4);
-end
-
-min1 = min(height);
-max1 = max(height);
-
-min2 = min(-1*MTSLVDT);
-max2 = max(-1*MTSLVDT);
-
-min3 = min(height1);
-max3 = max(height1);
-
-for i = 1:1:length(wp11)
-    heightNorm(i,1) = (height(i,1) - min1)/(max1-min1);
-    heightNorm1(i,1) = (height1(i,1) - min3)/(max3-min3);
-    dispNorm(i,1)   = (-1*MTSLVDT(i,1) - min2)/(max2-min2);
-end
-
-plot(NormTime,heightNorm1,'r',NormTime,dispNorm,'b',NormTime,sgolayfilt(heightNorm1,1,21),'g')
-
-
-range = 97000:103000;
-
-t = NormTime(range,1);
-f(:,1) = sg1(range,1);
-f(:,2) = sgolayfilt(sg1(range,1),1,3);
-f(:,3) = sgolayfilt(sg1(range,1),2,5);
-f(:,4) = sgolayfilt(sg1(range,1),1,7);
-f(:,5) = sgolayfilt(sg1(range,1),1,9);
-f(:,6) = sgolayfilt(sg1(range,1),1,11);
-f(:,7) = sgolayfilt(sg1(range,1),1,13);
-f(:,8) = sgolayfilt(sg1(range,1),3,15);
-f(:,9) = sgolayfilt(sg1(range,1),3,17);
-%}
-%{
-figure;
-hold on
-
-subplot(6,1,1);
-hold on
-plot(t,f31)
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1])
-
-subplot(6,1,2);
-hold on
-plot(t,f31);
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1])
-
-subplot(6,1,3);
-hold on
-plot(t,f51);
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1])
-
-subplot(6,1,4);
-hold on
-plot(t,f71);
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1])
-
-subplot(6,1,5);
-hold on
-plot(t,f91);
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1])
-
-subplot(6,1,6);
-hold on
-plot(t,f111);
-plot(t,sg1(range,1),'Color',[1, 0, 0, 0.05])
-
-%plot(t,f3,t,f5,t,f7,t,f9,t,f11)
-%legend('3','5','7','9','11')
-
-%}
-%{
-filters = [0 3 5 7 9 11 13 15 17];
-i= 1;
-for i = 2:1:8
-    figure
-    hold on
-    p1 = plot(t,LC1(range,1),'Color',[1, 0, 0, 1]);
-    p2 = plot(t,sgolayfilt(LC1(range,1),1,filters(1,i)),'b');
-    title(sprintf('LC1 1 vs. Normalized Time, %f SGF Frame Size',filters(1,i)));
-    ylabel('Strain (uStrain)');
-    xlabel('Time (sec)');
-    grid on;
-    grid minor; 
-end
- %}
-%figure
-%hold on
-%p1 = plot(t,sg1(range,1),'Color',[1, 0, 0, 0.1]);
-%p2 = plot(t,f113,'b');
-%grid on
-
-%{ 
-wrong moment code
-dA = [(((offset(sg(i,1)*10^-6)/gaugeLength)+gaugeLength)*gaugeWidth; (((offset(sg(i,3)*10^-6)/gaugeLength)+gaugeLength)*gaugeWidth];
-        
-        %Stress at particular points
-        stressDistOrig(i,:)               = stressRegression(i,1) + stressRegression(i,2)*points;
-        stressDistAxial(i,1:size(points)) = (10^-6)*modulus*offset(sg(i,2);
-        stressDistBend(i,:)               = stressRegression(i,4) + stressRegression(i,5)*points;
-        
-        %Forces given the area of bending as edge to center of ST divided
-        %by thickness
-        areaTrue   = 3*0.25; %in^2
-        areaMax    = (1.25+1.5+1.5)*0.25; %in^2
-        
-        %below we have a variable that gives the force determined by the
-        %known stresses from the strain gauge and then another that details
-        %the forces using the highest calculated from interpolation. The
-        %latter is to account for potential stress concentrations and for
-        %the fact that bending will force the beam to rotate to a position
-        %where it is acting on less clear space.
-
-        %For the actual forces:
-        forceAxial(i, 1)    = areaTrue*stressDistAxial(i,1);
-        forceBending(i, 1:2) = [areaTrue*stressDistBend(i,4) areaTrue*stressDistBend(i,16)];
-        forceTotal(i, 1:2)   = [(forceAxial(i, 1)+forceBending(i, 1)) (forceAxial(i, 1)+areaTrue*stressDistBend(i,16))];
-        
-        %For the maximised forces:
-        forceAxial(i, 2)    = areaMax*stressDistAxial(i,1);
-        forceBending(i, 3:4) = [areaMax*stressDistBend(i,4) areaMax*stressDistBend(i,16)];
-        forceTotal(i, 3:4)   = [(forceAxial(i, 2)+forceBending(i, 3)) (forceAxial(i, 2)+areaMax*stressDistBend(i,16))];
-        
-        %Calculate Moments
-        %Centroid
-        cActual = (2/3)*3; %in
-        cMax    = (2/3)*(4.25); %in
-        
-        %For actual forces:
-        momentBending(i, 1) = forceBending(i,1)*cActual + forceBending(i,2)*cActual;
-        
-        %For maximum moment
-        momentBending(i, 2) = forceBending(i,3)*cMax + forceBending(i,4)*cMax;
-        %}
-%{
-myVideo = VideoWriter('myfile.avi')
-
-open(myVideo);
-
-uncompressedVideo = VideoWriter('myfile.avi', 'Uncompressed AVI');
-
-for i = 1:1:size(moment, 1)
-    plot(NormTime(i,1), moment(i,1));
-    currFrame = getframe;
-    writeVideo(myVideo,currFrame);
-end
-
-close(myVideo);
-%}
 
 %{
 lc2(:,7) = offset(lc(:,7));
