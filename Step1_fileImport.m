@@ -1,11 +1,13 @@
+clear all
+close all
 clear
 close all
 clc
 
-textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 04-07-16\'; %Location of File
-textFileName     = 'fs testing -st2 - 04-07-16Run'; %Name of file to be processed
-textFileSeed     = 200;
-t_saveFileAs     = 'FS Testing - ST2 - Test 2 - 04-07-16'; %What to name file upon save
+textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 04-15-16\'; %Location of File
+textFileName     = 'fs testing -st2 - 04-15-16Run'; %Name of file to be processed
+textFileSeed     = 300;
+t_saveFileAs     = 'FS Testing - ST2 - Test 3 - 04-15-16'; %What to name file upon save
 t_saveFileAs2    = sprintf('[Filter]%s',t_saveFileAs);
 amount           = 31;
 
