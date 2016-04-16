@@ -88,8 +88,8 @@ end
 %function. This prevents plot from saving before all requested features are
 %present
 if savePlot == true
-    saveas(gcf, fullfile(ProcessCodeName,savePlotName), 'png')
-    saveas(gcf, fullfile(ProcessCodeName,savePlotName), 'svg')
+    saveas(gcf, fullfile('..\',ProcessCodeName,savePlotName), 'png')
+    saveas(gcf, fullfile('..\',ProcessCodeName,savePlotName), 'svg')
 end
 
 %Status function. Saving a plot can take some time therefore it's good to
