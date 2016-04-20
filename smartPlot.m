@@ -74,7 +74,7 @@ if nargin > 5
                 h.Position = [0,0,1,1];
                 %Save flags
                 savePlot     = true;
-                savePlotName = varargin{r+1};
+                savePlotName = sprintf('[%s]%s', ProcessCodeName, varargin{r+1});
                 savePlotr    = r;
             case 'details'
                 showDetails = true;
