@@ -22,14 +22,14 @@ ProcessWPCoords              = false;
 ProcessWPHeights             = false;
 processWPHeighDistances      = false;
 processWPCoordinates         = false;
-%processDAC                   = true;
+processIMU                   = true;
 ProcessBeamRotation          = true;
 ProcessStrainProfiles        = true;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
 ProcessMoments               = true;
 ProcessGarbageCollection     = false;
-ProcessOutputPlots           = true;
+ProcessOutputPlots           = false;
 
 % The very end where the pivot rests serves as reference for all
 % measurements. All measurements are assumed to start at the extreme end of
@@ -44,11 +44,11 @@ wp21Pos = [0 0];
 wp22Pos = [0 0];
 wp31Pos = [0 0];
 wp32Pos = [0 0];
-wp41Pos = [(9/16)+1.5+5.07 48.5];
-wp42Pos = [(9/16)+1.5+5.07 32.5];
+wp41Pos = [5.07 48.125+0.39];
+wp42Pos = [5.07 31.8750+0.39];
 D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2));
 D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2));
-D3 = 0;
+D3 = 4;
 D4 = 0;
 
 %Constants
@@ -70,14 +70,13 @@ end
 %Load data. Checks if IMU data exists and processes it if so. This is more
 %of a legacy feature since IMU was not added until months after testing
 %began.
-filename1 = sprintf('[RotationData]%s.mat',ProcessFileName);
+filename1 = fullfile('..\',sprintf('[ProcRotationData] %s.mat',ProcessFileName));
     
 load(sprintf('[Filter]%s.mat',ProcessFileName));
 
 if exist(filename1, 'file') == 2
     load(filename1);
 end
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -128,8 +127,8 @@ if ProcessConsolidateLCs == true
     lc(:,3) = LC3(:,1);
     lc(:,4) = LC4(:,1);
     lc(:,5) = MTSLC(:,1);
-    lc(:,6) = LC1(:,1)+LC2(:,1);
-    lc(:,7) = LC3(:,1)+LC4(:,1);
+    lc(:,6) = offset(LC1(:,1))+offset(LC2(:,1));
+    lc(:,7) = offset(LC3(:,1))+offset(LC4(:,1));
     
     disp('Load cell variables successfully converted into one. Appending to file and removing garbage.')
     clearvars LC1 LC2 LC3 LC4 MTSLC;
@@ -138,21 +137,7 @@ if ProcessConsolidateLCs == true
     end
     disp('File successfully appended.');
 end
-%{
-for r = 1:1:length(A)
-    DACTime(r,1) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)])/1000;
-end
 
-for s = 1:1:length(NormTime)
-    finder = DACTime(DACTime >= NormTime(s) & DACTime < NormTime(s));
-    finderSize = size(finder);
-    if finderSize(1) == 0 && finderSize(2) == 1
-        keys(s) = 0;
-    else
-        key(s) = DACTime(DACTime >= NormTime(s) & DACTime < NormTime(s));
-    end
-end
-%}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE EACH ANGLE OF WIRE POTENTIOMETER TRIANGLES                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -260,17 +245,34 @@ if ProcessWPHeights == true
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS DAC DATA AND RELATE TO IMU DATA                                  %
+%PROCESS IMU DATA                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%{
-for r = 1:1:length(A)
-    DACTime(r) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)])/1000;
+if processIMU == true
+    %Convert all DAQ recorded ADC voltages to time in units of milliseconds
+    disp('Converting DAC output into time data...');
+    for r = 1:1:length(A)
+        DACTime(r,1) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)]);
+    end
+    disp('Process complete.');
+
+    %Associate timestamp data outputted from DAC with DAQ time data. This is
+    %done by taking DACTime, cleaning it up, and then outputting what row of
+    %IMU data variables correspondes with each row of NormTime data from the
+    %DAQ.
+    disp('Obtaining indexes of data to relate IMU time to DAQ time...');
+    DACTimeIndex = associateDACTime(DACTime, MilliTime);
+    disp('Process complete.');
+
+    %Produce IMU data with time in sync with DAQ time. This outputs yaw,
+    %pitch, and roll, respectively, for both IMUs in units of radians.
+    %Yaw (alpha) (CC Z Axis)
+    %Pitch (beta) (CC Y Axis)
+    %Roll (gamma) (CC X Axis)
+    IMUA = [anglesA(DACTimeIndex,1) anglesA(DACTimeIndex,2) anglesA(DACTimeIndex,3)];
+    IMUB = [anglesB(DACTimeIndex,1) anglesB(DACTimeIndex,2) anglesB(DACTimeIndex,3)];
+    
 end
 
-for s = 1:1:length(NormTime)
-    key(s) = find(DACTime >= NormTime(s) && DACTime < NormTime(s));
-end
-   %} 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE ROTATION USING WIREPOT DATA                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -289,10 +291,10 @@ if ProcessBeamRotation == true
     %rotation can be determined.
     
     %Slope for top of the beam
-    m11 = (wp(1,7)*sin(wpAngles(1,2)) - 0)/(wp(1,7)*cos(wpAngles(1,2)) - 5.625);
+    m11 = (wp(1,7)*sin(wpAngles(1,2)) - 0)/(wp(1,7)*cos(wpAngles(1,2)) - D1/2);
     
     %Slope for bottom of the beam
-    m12 = (wp(1,2)*sin(wpAngles(1,5)) - 0)/(wp(1,2)*cos(wpAngles(1,5)) - 5.75);
+    m12 = (wp(1,2)*sin(wpAngles(1,5)) - 0)/(wp(1,2)*cos(wpAngles(1,5)) - D2/2);
     
     %Slope for wirepots at the pivot rod.
     m13 = (wp(1,6)*sin(wpAngles(1,8)) - 0)/(wp(1,6)*cos(wpAngles(1,8)) - 2);
@@ -306,8 +308,8 @@ if ProcessBeamRotation == true
         
         %Current slope of the triangle median for the top of the beam,
         %bottom of the beam, and pivot rod, respectively.
-        m21 = (wp(i,7)*sin(wpAngles(i,2)) - 0)/(wp(i,7)*cos(wpAngles(i,2)) - 5.625);
-        m22 = (wp(i,2)*sin(wpAngles(i,5)) - 0)/(wp(i,2)*cos(wpAngles(i,5)) - 5.75);
+        m21 = (wp(i,7)*sin(wpAngles(i,2)) - 0)/(wp(i,7)*cos(wpAngles(i,2)) - D1/2);
+        m22 = (wp(i,2)*sin(wpAngles(i,5)) - 0)/(wp(i,2)*cos(wpAngles(i,5)) - D2/2);
         m23 = (wp(i,6)*sin(wpAngles(i,8)) - 0)/(wp(i,6)*cos(wpAngles(i,8)) - 2);
         
         %Calculate the angle between the initial and current median for the
@@ -584,9 +586,10 @@ if ProcessMoments == true
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% Moments calculated using LC Data %%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %Middle of shear tab at column flange face
         
         
-        
+        moment(:,6) = lc(:,7)*30.5 - lc(:,6)*29.5; 
         %Need to implement. Will require measuring distance from center of
         %LCs to column. Will also have to take into count translation of
         %the beam/column.
@@ -598,44 +601,6 @@ if ProcessMoments == true
     %}
 end
 
-for q = 1:1:4
-    offsetTemp(:,q) = offset(lc(:,q));
-    q
-    for r = 1:1:size(lc,1)
-        if offsetTemp(r,q) > 0
-            lc2(r,q) = 0;
-        else
-            lc2(r,q) = offsetTemp(r,q);
-        end
-    end
-end
-
-lcMod(:,1) = lc2(:,1) + lc2(:,2);
-lcMod(:,2) = lc2(:,3) + lc2(:,4);
-
-lc2(:,6) = offset(lc(:,6));
-lc2(:,7) = offset(lc(:,7));
-
-for s = 1:1:size(lcMod,1)
-    %mo(s,1) = lc2(s,7)*29.375 - lc2(s,6)*30.1875 - lc2(s,5)*48;
-    mo(s,1) = lcMod(s,2)*29.375 - lcMod(s,1)*30.1875;
-    mo(s,2) = lc2(s,7)*29.375 - lc2(s,6)*30.1875;
-    mo(s,3) = - lc2(s,7)*29.375 + lc2(s,6)*30.1875;
-end
-figure
-plot(offset(beamRotation(:,3)), mo(:,2))
-grid on
-grid minor
-figure
-plot(offset(beamRotation), mo(:,2))
-grid on
-grid minor
-%figure
-%plot(offset(beamRotation), mo(:,1))
-%grid on
-%grid minor
-
-%}
 %{
 plot3(NormTime, repmat(strainIncrement,1,57046),  strainProf)
 hold
@@ -659,8 +624,9 @@ if ProcessOutputPlots == true
     else
         plotArrayCol = [offset(sg(r1:r2,6)) offset(sg(r1:r2,7)) offset(sg(r1:r2,8)) offset(sg(r1:r2,9))];
     end
-    
+
     %%%% Strain Gauges %%%%
+    disp('Plotting strain gauge data');
     smartPlot(NormTime(r1:r2), [sg(r1:r2,1) sg(r1:r2,2) sg(r1:r2,3) sg(r1:r2,4)], ...
         'Strain Gauge Data on Shear Tab', 'Time (sec)', 'Strain (uStrain)', ...
         'legend', {'SG1','SG2','SG3','SG4'}, 'visible', 'grid', 'save', 'sg-st');
@@ -674,6 +640,7 @@ if ProcessOutputPlots == true
         'legend', {'SG19','SG20','SG21','SG22'}, 'visible', 'grid', 'save', 'sg-col-offset');
     
     %%%% Load Cells %%%%
+    disp('Plotting load cell data');
     smartPlot(NormTime(r1:r2), [lc(r1:r2,1) lc(r1:r2,2) lc(r1:r2,3) lc(r1:r2,4)], ...
         'Reaction Block Load Cells', 'Time (sec)', 'Force (lbf)', ...
         'legend', {'LC1','LC2','LC3','LC4'}, 'grid', 'visible', 'save', 'lc');
@@ -695,6 +662,7 @@ if ProcessOutputPlots == true
         'legend', {'LC G1','LC G2'}, 'visible', 'grid', 'save', 'lc-groups-offset');
     
     %%%% Angles %%%%
+    disp('Plotting rotation data');
     smartPlot(NormTime(r1:r2), beamRotation(r1:r2,1), 'WP Group 1 Rotation (Method 1)', ...
         'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
         'rotation-g1-method1-offset');
@@ -722,6 +690,7 @@ if ProcessOutputPlots == true
         'visible', 'save', 'rotation-g12-method2-offset');
     
     %%%% Wire-pots %%%%
+    disp('Plotting wire-pot data');
     smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1))], ...
         'Offset Wirepot Group 1', 'Time (sec)', 'Length (in)', ...
         'legend', {'WP4-1','WP2-1','WP1-1'},  'visible', 'grid', 'save', 'wp-g1-offset');
@@ -747,6 +716,36 @@ if ProcessOutputPlots == true
         'Offset All Beam Rotation Wirepots', 'Time (sec)', 'Length (in)', ...
         'legend', {'WP4-1','WP2-1','WP1-1','WP4-2','WP2-2','WP1-2'}, ...
         'visible', 'grid', 'save', 'wp-allrot-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,10)) offset(wp(r1:r2,11))], ...
+        'Offset Wirepots Measuring Twist in Column', 'Time (sec)', 'Length (in)', ...
+        'legend', {'WP6-1','WP6-2'}, 'visible', 'grid', 'save', 'wp-twist-offset');
+    
+    %%%% Hysteresis %%%%
+    disp('Plotting hysteresis data');
+    smartPlot(beamRotation(r1:r2,1), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 1 (Method 1)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g11-offset');
+    
+    smartPlot(beamRotation(r1:r2,4), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 1 (Method 2)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g12-offset');
+    
+    smartPlot(beamRotation(r1:r2,2), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 2 (Method 1)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g21-offset');
+    
+    smartPlot(beamRotation(r1:r2,5), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 2 (Method 2)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g22-offset');
+    
+    smartPlot(beamRotation(r1:r2,3), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 3 (Method 1)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g31-offset');
+    
+    smartPlot(beamRotation(r1:r2,6), moment(r1:r2,6), ...
+        'Offset Hysteresis Using WP Group 3 (Method 2)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g32-offset');
 end
 
 %{
