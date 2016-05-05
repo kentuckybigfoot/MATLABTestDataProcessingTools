@@ -12,3 +12,8 @@ Step3_DataProcessing.m To-Do
 - Include strain-bolt in force calculations.
 - Possibly consider changing order of strain gauges in variables. Have first 4 be column strain gauges, fifth be bolt strain gauge, and last 4-5 be the shear tab. This will allow us to check only length and know what shear tab we are on and how to handle multiple SGs.
 - Include dimensions of larger strain gauges. Go to lab and get info.
+
+normfxn.m To-Do
+- Add documentation
+- Add ability to scale output to initial number
+- - This will require identifying the difference between style and a scale parameter. Possibly have style be boolean so that true is standard 0-1 scale while false is -1 to 1 scale. If parameter is purely numeric the fxn would understand that is the scale minimum.
