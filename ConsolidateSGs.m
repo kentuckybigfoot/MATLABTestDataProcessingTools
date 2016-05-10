@@ -1,5 +1,5 @@
 function [ sg ] = ConsolidateSGs( ShearTab, filename )
-%UNTITLED2 Summary of this function goes here
+%consolidateSGs - Simplify process of consolidating strain gauges.
 %   Consolidates the many strain gauge variables into a signal array
 %   variable for output.
 %   ST1 -> sg(:,1:3)=ST1, sg(:,4)=BFFD, sg(:,5)=Bolt, sg(:,6:9)=flanges
