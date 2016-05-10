@@ -4,15 +4,15 @@ clear
 close all
 clc
 
-textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 04-15-16\'; %Location of File
-textFileName     = 'fs testing -st2 - 04-15-16Run'; %Name of file to be processed
-textFileSeed     = 300;
-t_saveFileAs     = 'FS Testing - ST2 - Test 3 - 04-15-16'; %What to name file upon save
+textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-09-16\'; %Location of File
+textFileName     = 'fs testing -st2 - 05-09-16Run'; %Name of file to be processed
+textFileSeed     = 200;
+t_saveFileAs     = 'FS Testing - ST2 - Test 2 - 05-09-16'; %What to name file upon save
 t_saveFileAs2    = sprintf('[Filter]%s',t_saveFileAs);
-amount           = 31;
+amount           = 35;
 
-names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H'};
-formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
+names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4'};
+formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
 
 for y = 1:1:length(names)
     eval(sprintf('%s = [];',names{y}));
