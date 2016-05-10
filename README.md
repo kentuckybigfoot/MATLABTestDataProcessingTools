@@ -12,6 +12,7 @@ Step3_DataProcessing.m To-Do
 - Include strain-bolt in force calculations.
 - Possibly consider changing order of strain gauges in variables. Have first 4 be column strain gauges, fifth be bolt strain gauge, and last 4-5 be the shear tab. This will allow us to check only length and know what shear tab we are on and how to handle multiple SGs.
 - Include dimensions of larger strain gauges. Go to lab and get info.
+- Add failsafe to processIMU in case recording of the initial "reset, tare, reset, and tare" sequence is missed is missed by DAQ.
 
 normfxn.m To-Do
 - Add documentation
