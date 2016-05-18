@@ -6,30 +6,36 @@ format long;
 
 global ProcessRealName %So we can pick this up in function calls
 global ProcessCodeName %So we can pick this up in function calls
+global ProcessFileName %So we can pick this up in function calls
+global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
-ProcessFileName              = 'FS Testing - ST2 - Test 2 - 04-15-16';
-ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 04-15-16';
-ProcessCodeName              = 'FST-ST2-Apr15-2';
+ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-16-16';
+ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-16-16';
+ProcessRealName              = 'Full Scale Test 1 - ST2 Only - 05-16-16';
+ProcessCodeName              = 'FST-ST2-May16-1';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
-localAppend                  = false;
+localAppend                  = true;
 ProcessConsolidateSGs        = true;
 ProcessConsolidateWPs        = true;
+ProcessConsolidateLPs        = true;
 ProcessConsolidateLCs        = true;
 ProcessWPAngles              = true;
 ProcessWPCoords              = false;
-ProcessWPHeights             = false;
+ProcessWPHeights             = true;
 processWPHeighDistances      = false;
 processWPCoordinates         = false;
-processIMU                   = true;
+ProcessLPs                   = true;
+processIMU                   = false;
 ProcessBeamRotation          = true;
 ProcessStrainProfiles        = true;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
 ProcessMoments               = true;
+ProcessEQM                   = true;
 ProcessGarbageCollection     = false;
-ProcessOutputPlots           = false;
+ProcessOutputPlots           = true;
 
 % The very end where the pivot rests serves as reference for all
 % measurements. All measurements are assumed to start at the extreme end of
@@ -38,24 +44,28 @@ ProcessOutputPlots           = false;
 % wire. Dimensions for the wire pots can be found in Fig. 2 of page 68
 % (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
 
-wp11Pos = [(13+7/8)+0.50+0.39 54.25-(5.07-2.36)];
-wp12Pos = [(13+7/8)+0.375+0.39 22+1.5+5.07];
-wp21Pos = [0 0];
-wp22Pos = [0 0];
+wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + 5.07)];
+wp12Pos = [(13+7/8)+0.39 (23.1875+0.1250+5.07)];
+wp21Pos = [(5.07+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
+wp22Pos = [(5.07+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
 wp31Pos = [0 0];
 wp32Pos = [0 0];
-wp41Pos = [5.07 48.125+0.39];
-wp42Pos = [5.07 31.8750+0.39];
-D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2));
-D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2));
-D3 = 4;
+wp41Pos = [(5.07+0.125) (48.125+0.39)];
+wp42Pos = [(5.07+0.125) (32.1875+0.39)];
+wp71Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + 5.07)]; %Same as WP1-1 in theory
+wp72Pos = [(13+7/8)+0.39 (23.1875+0.1250+5.07)];             %Same as WP1-2 in theory
+D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
+D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
+D3 = 4; %WP group measuring bottom global position
 D4 = 0;
+D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
+D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 
 %Constants
-modulus = 29000; %Modulus of elasticity (ksi)
+modulus      = 29000; %Modulus of elasticity (ksi)
 boltEquation = 0;
-gaugeLength = [0.19685; 0.19685]; %(in) which is 5 mm
-gaugeWidth  = [0.0590551; 0.19685]; %(in) which is 1.5 mm
+gaugeLength  = [0.19685; 0.19685]; %(in) which is 5 mm
+gaugeWidth   = [0.0590551; 0.19685]; %(in) which is 1.5 mm
 
 if ProcessShearTab == '2' || ProcessShearTab == '4'
     stMidHeight = 5.75;
@@ -70,12 +80,15 @@ end
 %Load data. Checks if IMU data exists and processes it if so. This is more
 %of a legacy feature since IMU was not added until months after testing
 %began.
-filename1 = fullfile('..\',sprintf('[ProcRotationData] %s.mat',ProcessFileName));
-    
-load(sprintf('[Filter]%s.mat',ProcessFileName));
+IMUDataFileName = fullfile(ProcessFilePath,sprintf('[ProcRotationData]%s.mat',ProcessFileName));
+ProcessFileName = fullfile(ProcessFilePath, sprintf('[Filter]%s.mat',ProcessFileName));
 
-if exist(filename1, 'file') == 2
-    load(filename1);
+load(ProcessFileName);
+
+if exist(IMUDataFileName, 'file') == 2
+    load(IMUDataFileName);
+else
+    processIMU = false; %Failsafe incase trying to proccess non-exist. file
 end
 
 
@@ -88,7 +101,6 @@ if ProcessConsolidateSGs == true
     clearvars sg1 sg2 sg3 sg4 sg5 sg6 sg7 sg8 sg9 sg10 sg11 sg12 sg13 sg14 sg15 sg16 sg17 sg18 sg19 sg20 sg21 sg22 sgBolt;
     if localAppend == true
         save(ProcessFileName, 'sg', '-append');
-        
     end
     disp('File successfully appended.');
 end
@@ -108,12 +120,33 @@ if ProcessConsolidateWPs == true
     wp(:,9)  = wp51(:,1);
     wp(:,10) = wp61(:,1);
     wp(:,11) = wp62(:,1);
-    wp(:,12) = MTSLVDT(:,1);
+    wp(:,12) = wp71(:,1);
+    wp(:,13) = wp72(:,1);
+    wp(:,14) = MTSLVDT(:,1);
     
     disp('WP variables successfully converted into one. Appending to file and removing garbage.')
-    clearvars wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 wp61 wp62 MTSLVDT;
+    clearvars wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 wp61 wp62 wp71 wp72 MTSLVDT;
     if localAppend == true
         save(ProcessFileName, 'wp', '-append');
+    end
+    disp('File successfully appended.');
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%CONSOLIDATE LINEAR POTENTIOMETER VARIABLES INTO SINGLE ARAY              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ProcessConsolidateLPs == true
+    lp(:,1)  = LP1(:,1);
+    lp(:,2)  = LP2(:,1);
+    lp(:,3)  = LP3(:,1);
+    lp(:,4)  = LP4(:,1);
+    lp(:,5)  = (offset(LP1(:,1)) + offset(LP3(:,1)))/2;
+    lp(:,6)  = (offset(LP2(:,1)) + offset(LP4(:,1)))/2;
+    
+    disp('LP variables successfully converted into one. Appending to file and removing garbage.')
+    clearvars lp1 lp2 lp3 lp4;
+    if localAppend == true
+        save(ProcessFileName, 'lp', '-append');
     end
     disp('File successfully appended.');
 end
@@ -146,13 +179,12 @@ if ProcessWPAngles == true
     
     disp('Processing angles');
     if runParallel == true
-        [wpAngles, wpAnglesDeg] = procWPAnglesPar(wp, [D1, D2, D3, D4]);
+        [wpAngles, wpAnglesDeg] = procWPAnglesPar((wp(:,:) + 2.71654), [D1, D2, D3, D4, D5, D6]);
     else
         [wpAngles, wpAnglesDeg] = procWPAngles(wp);
     end
     
     disp('Processing angles complete. Validating angles.')
-    %wpAnglesPass = [];
     
     for i = 1:1:length(wp)
         if round(wpAngles(i,1) + wpAngles(i,2) + wpAngles(i,3),4) ~= round(pi,4)
@@ -175,7 +207,6 @@ if ProcessWPAngles == true
 
     if any(wpAnglesPass == 0)
         disp('Error determining WP Angles with non offset data.')
-        %disp(num2str(i),' failed last')
     else
         disp('Angles using non offset data calculated successfully. Appending to file (if localAppend = true) and removing garbage.')
         clearvars wp1Angles wp2Angles wp3Angles wp4Angles wp1cDist wp2cDist wp3cDist wp4cDist wpAnglesPass
@@ -188,12 +219,12 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE X & Y COORDINATES FOR C VERTEX OF WIRE POT TRIANGLES           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%See "help lawOfCos" for angle orientation information.
+%See "heLP lawOfCos" for angle orientation information.
 
 %Determine XY of triangles using both angles and compare them as a fail
 %safe. Comparison is only carried out to three decimal places.
 %Realistically the wire pots are likely only moderatly accurate to the
-%second decimal place but a third helps with round-off error in floating
+%second decimal place but a third heLPs with round-off error in floating
 %math.
 
 %Coded in accordance to wire-pot configuration in place 04/01/16
@@ -222,8 +253,6 @@ if ProcessWPCoords == true
     end
 end
 
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -247,6 +276,40 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %PROCESS IMU DATA                                                         %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ProcessLPs == true
+    load('C:\Users\clk0032\Dropbox\Friction Connection Research\Linear Spring Potentiometer Calibration\LPCal.mat');
+    
+    for r = 1:1:size(p1,2)
+        lpValues1(:,r) = offset(polyval(p1(:,r), lp(:,1)));
+        lpValues2(:,r) = offset(polyval(p2(:,r), lp(:,2)));
+        lpValues3(:,r) = offset(polyval(p3(:,r), lp(:,3)));
+        if r < 4 && r ~= 2
+            lpValues4(:,r) = offset(polyval(p4(:,r), lp(:,4)));
+        end
+    end
+    
+    lpValues4(:,2) = [];
+    %mu = [4819.07121967553;82.6511269503711];
+    %p4 = [-0.00271303197038322,-0.0265050717127049,-0.0860876554573797,-0.0693793958492654,0.162275673684280,0.324824621310463,0.204426859405091,0.347725190280539,5.34467391561030];
+    p4 = [-8.14898838897599e-20;2.31385242074387e-15;-2.53901613238266e-11;1.16383850495194e-07;5.34327273544657e-05;-3.04408237969401;14004.5257169421;-28235882.0040511;22265113361.3903];
+    lpValues4(:,end+1) = abs(offset(polyval(p4, lp(:,4))));
+    lpValues1(:,end+1) = mean(abs(lpValues1),2);
+    lpValues2(:,end+1) = mean(abs(lpValues2),2);
+    lpValues3(:,end+1) = mean(abs(lpValues3),2);
+    lpValues4(:,end+1) = mean(abs(lpValues4),2);
+    
+    lp(:,1) = lpValues1(:,end);
+    lp(:,2) = lpValues1(:,end);
+    lp(:,3) = lpValues1(:,end);
+    lp(:,4) = lpValues1(:,end);
+    lp(:,5) = (offset(lpValues1(:, end)) + offset(lpValues3(:,end)))/2;
+    lp(:,6) = (offset(lpValues2(:, end)) + offset(lpValues4(:,end)))/2;
+
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%PROCESS IMU DATA                                                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if processIMU == true
     %Convert all DAQ recorded ADC voltages to time in units of milliseconds
     disp('Converting DAC output into time data...');
@@ -265,7 +328,7 @@ if processIMU == true
 
     %Produce IMU data with time in sync with DAQ time. This outputs yaw,
     %pitch, and roll, respectively, for both IMUs in units of radians.
-    %Yaw (alpha) (CC Z Axis)
+    %Yaw (aLPha) (CC Z Axis)
     %Pitch (beta) (CC Y Axis)
     %Roll (gamma) (CC X Axis)
     IMUA = [anglesA(DACTimeIndex,1) anglesA(DACTimeIndex,2) anglesA(DACTimeIndex,3)];
@@ -278,67 +341,64 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ProcessBeamRotation == true
     %Define initial gamma angle to compare again.
-    beamInitialAngle1 = wpAngles(1,3); %Initial angle top of beam
-    beamInitialAngle2 = wpAngles(1,6); %Initial angle bot of beam
-    beamInitialAngle3 = wpAngles(1,9); %Initial angle of pivot rod
-    
-    %For progress updates
-    reverseStr = '';
+    beamInitialAngle1 = mean(wpAngles(1:50,3)); %Initial angle top of beam
+    beamInitialAngle2 = mean(wpAngles(1:50,6)); %Initial angle bot of beam
+    beamInitialAngle3 = mean(wpAngles(1:50,9)); %Initial angle of pivot rod
+    beamInitialAngle5 = mean(wpAngles(1:50,14)); %Initial angle bot of beam
+    beamInitialAngle6 = mean(wpAngles(1:50,17)); %Initial angle of pivot rod
     
     %Determine the initial slope of the triangles' median (midpoint of
     %length c to vertex C). This is done so that later the current slope
     %can be found and relating slope to tangent the change in angle during
     %rotation can be determined.
     
-    %Slope for top of the beam
-    m11 = (wp(1,7)*sin(wpAngles(1,2)) - 0)/(wp(1,7)*cos(wpAngles(1,2)) - D1/2);
+    %Slope beam instrument grouping 1 (closest to ceiling)
+    m11 = (wp(1,7)*sin(mean(wpAngles(1:50,2))) - 0)/(wp(1,7)*cos(mean(wpAngles(1:50,2))) - D1/2);
     
-    %Slope for bottom of the beam
-    m12 = (wp(1,2)*sin(wpAngles(1,5)) - 0)/(wp(1,2)*cos(wpAngles(1,5)) - D2/2);
+    %Slope beam instrument grouping 2 (closest to ceiling)
+    m12 = (wp(1,2)*sin(mean(wpAngles(1:50,5))) - 0)/(wp(1,2)*cos(mean(wpAngles(1:50,5))) - D2/2);
     
-    %Slope for wirepots at the pivot rod.
-    m13 = (wp(1,6)*sin(wpAngles(1,8)) - 0)/(wp(1,6)*cos(wpAngles(1,8)) - 2);
+    %Slope beam instrument grouping 3 (for wirepots at the pivot rod.)
+    m13 = (wp(1,6)*sin(mean(wpAngles(1:50,8))) - 0)/(wp(1,6)*cos(mean(wpAngles(1:50,8))) - 2);
+    
+    %Slope beam instrument grouping 2 (closest to floor)
+    m15 = (wp(1,3)*sin(mean(wpAngles(1:50,14))) - 0)/(wp(1,3)*cos(mean(wpAngles(1:50,14))) - D5/2);
+    
+    %Slope beam instrument grouping 2 (closest to floor)
+    m16 = (wp(1,13)*sin(mean(wpAngles(1:50,17))) - 0)/(wp(1,13)*cos(mean(wpAngles(1:50,17))) - D6/2);
     
     for i = 1:1:size(wp,1)
         %Compare current angle between sides a & b (angle gamma) to the
         %initial angle.
         beamRotation(i,1) = wpAngles(i, 3) - beamInitialAngle1;
         beamRotation(i,2) = wpAngles(i, 6) - beamInitialAngle2;
-        beamRotation(i,3) = abs(wpAngles(i, 9) - beamInitialAngle3);
+        beamRotation(i,3) = wpAngles(i, 9) - beamInitialAngle3;
+        beamRotation(i,4) = wpAngles(i, 14) - beamInitialAngle5;
+        beamRotation(i,5) = wpAngles(i, 17) - beamInitialAngle6;
         
         %Current slope of the triangle median for the top of the beam,
-        %bottom of the beam, and pivot rod, respectively.
+        %bottom of the beam, and pivot rod, bottom group 1 and bottom
+        %group 2, respectively.
         m21 = (wp(i,7)*sin(wpAngles(i,2)) - 0)/(wp(i,7)*cos(wpAngles(i,2)) - D1/2);
         m22 = (wp(i,2)*sin(wpAngles(i,5)) - 0)/(wp(i,2)*cos(wpAngles(i,5)) - D2/2);
         m23 = (wp(i,6)*sin(wpAngles(i,8)) - 0)/(wp(i,6)*cos(wpAngles(i,8)) - 2);
+        m25 = (wp(i,3)*sin(wpAngles(i,14)) - 0)/(wp(i,3)*cos(wpAngles(i,14)) - D5/2);
+        m26 = (wp(i,13)*sin(wpAngles(i,17)) - 0)/(wp(i,13)*cos(wpAngles(i,17)) - D6/2);
         
         %Calculate the angle between the initial and current median for the
-        %top of the beam, bottom of the beam, and pivot rod, respectively.
-        beamRotation(i,4) = atan2((m21 - m11),(1 + m11*m21));
-        beamRotation(i,5) = atan2((m22 - m12),(1 + m12*m22));
-        beamRotation(i,6) = atan2((m23 - m13),(1 + m13*m23));
-        
-        %As of 04/01/02 there are two wire pots on the top flange of the
-        %column and two wire pots on the bottom flange. These wire pots at
-        %each level set parallel to one another and by comparing their
-        %initial elongation to their current elongation the angle of
-        %rotation can be determined. WP4-1 and WP4-2 sit on the top flange
-        %while WP2-1 and WP2-2 sit on the bottom.
-        
-      
-        %Progress indicator. atan2 and the other trig functions take 
-        %considerable time to execute and this give me a hint of how
-        %close to being finished matlab is.
-        percentDone = 100 * i / size(wp,1);
-        msg = sprintf('Percent done: %3.1f', percentDone);
-        fprintf([reverseStr, msg]);
-        reverseStr = repmat(sprintf('\b'), 1, length(msg));
+        %top of the beam, bottom of the beam, and pivot rod, bottom group 1
+        %and bottom group 2, respectively.
+        beamRotation(i,6)  = atan2((m21 - m11),(1 + m11*m21));
+        beamRotation(i,7)  = atan2((m22 - m12),(1 + m12*m22));
+        beamRotation(i,8)  = atan2((m23 - m13),(1 + m13*m23));
+        beamRotation(i,9)  = atan2((m25 - m15),(1 + m15*m25));
+        beamRotation(i,10) = atan2((m26 - m16),(1 + m16*m26)); 
     end
     
-    clearvars m11 m12 m13 m21 m22 m23 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 reverseStr percentDone msg;
+    clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6;
     disp('Beam rotations calculated.. Appending to data file.');
     if localAppend == true
-        save(ProcessFileName, 'beamResultants', 'beamAngles', 'beamAnglesDeg', 'beamAngleDiff', 'beamAngleDiffDeg', 'beamAngleCenterChange', 'beamRotation', 'beamRotationDeg', '-append');
+        save(ProcessFileName, 'beamRotation', '-append');
     end
 end
 
@@ -586,19 +646,40 @@ if ProcessMoments == true
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% Moments calculated using LC Data %%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        distG1 = (29+(11/16)); %Dist from center of LC G1 to column face
+        distG2 = (29+(7/16)); %Dist from center of LC G2 to column face
         %Middle of shear tab at column flange face
         
+        %Unadjusted due to rotation. From roller to column flange
+        moment(:,6) = lc(:,7)*distG2 - lc(:,6)*distG1;
         
-        moment(:,6) = lc(:,7)*30.5 - lc(:,6)*29.5; 
+        %Adjust due to rotation changing distance from roller to col. face
+        %Method 1: Using average from linear potentiometers.
+        moment(:,7) = lc(:,7)*distG2 - lc(:,6)*distG1;
+        %Method 2: Using beam rotation from wire-pot group 3.
+         
         %Need to implement. Will require measuring distance from center of
         %LCs to column. Will also have to take into count translation of
         %the beam/column.
     end
     clearvars gaugeLength gaugeWidth stMidHeight x topLength botLength strainTop strainTop1 strainBot strainBot1 elongationTop elongationTop1 elongationBot elongationBot1
     if localAppend == true
-        save(ProcessFileName, 'moment', 'moment1', '-append');
+        save(ProcessFileName, 'moment', '-append');
     end
     %}
+end
+
+if ProcessEQM == true
+    x1 = 48;
+    x2 = 36;
+    x3 = (29+(11/16));
+    x4 = (29+(7/16));
+    
+    eqm(:,1) = (lc(:,6)*x3 - lc(:,7)*x4)/(x1 + x2);
+    eqm(:,2) = lc(:,6) - lc(:,7);
+    eqm(:,3) = -lc(:,5);
+    eqm(:,4) = lc(:,5)*x1 - lc(:,6)*x3 + lc(:,7)*x4 - eqm(:,3)*x2;
+    eqm(:,5) = -lc(:,5)*x1 + lc(:,6)*x3 - lc(:,7)*x4 + eqm(:,3)*x2;
 end
 
 %{
@@ -691,13 +772,13 @@ if ProcessOutputPlots == true
     
     %%%% Wire-pots %%%%
     disp('Plotting wire-pot data');
-    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1))], ...
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1)) offset(wp(r1:r2,12))], ...
         'Offset Wirepot Group 1', 'Time (sec)', 'Length (in)', ...
-        'legend', {'WP4-1','WP2-1','WP1-1'},  'visible', 'grid', 'save', 'wp-g1-offset');
+        'legend', {'WP4-1','WP2-1','WP1-1','WP7-1'},  'visible', 'grid', 'save', 'wp-g1-offset');
     
-    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2))], ...
+    smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2)) offset(wp(r1:r2,13))], ...
         'Offset Wirepot Group 2', 'Time (sec)', 'Length (in)', ...
-        'legend', {'WP4-2','WP2-2','WP1-2'}, 'visible', 'grid', 'save', 'wp-g2-offset');
+        'legend', {'WP4-2','WP2-2','WP1-2','WP7-2'}, 'visible', 'grid', 'save', 'wp-g2-offset');
     
     smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,1)) offset(wp(r1:r2,2))], ...
         'Offset Vertical Wirepots', 'Time (sec)', 'Length (in)', ...
@@ -712,14 +793,56 @@ if ProcessOutputPlots == true
         'legend', {'WP2-1','WP2-2'}, 'visible', 'grid', 'save', 'wp-horzbot-offset');
     
     smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,7)) offset(wp(r1:r2,3)) offset(wp(r1:r2,1)) ...
-        offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2))], ...
+        offset(wp(r1:r2,8)) offset(wp(r1:r2,4)) offset(wp(r1:r2,2)) offset(wp(r1:r2,12)) offset(wp(r1:r2,13))], ...
         'Offset All Beam Rotation Wirepots', 'Time (sec)', 'Length (in)', ...
-        'legend', {'WP4-1','WP2-1','WP1-1','WP4-2','WP2-2','WP1-2'}, ...
+        'legend', {'WP4-1','WP2-1','WP1-1','WP4-2','WP2-2','WP1-2','WP7-1','WP7-2'}, ...
         'visible', 'grid', 'save', 'wp-allrot-offset');
     
     smartPlot(NormTime(r1:r2), [offset(wp(r1:r2,10)) offset(wp(r1:r2,11))], ...
         'Offset Wirepots Measuring Twist in Column', 'Time (sec)', 'Length (in)', ...
         'legend', {'WP6-1','WP6-2'}, 'visible', 'grid', 'save', 'wp-twist-offset');
+    
+    %%%% Linear Potentiometers %%%%
+    disp('Plotting linear potentiometer data');
+    smartPlot(NormTime(r1:r2), [offset(lpValues1(r1:r2,end))], ...
+        'Offset Linear Potentiometer 1', 'Distance (in.)', ...
+        'Time (Sec.)', 'visible', 'grid', 'save', 'lp-1-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues2(r1:r2,end))], ...
+        'Offset Linear Potentiometer 2', 'Distance (in.)', ...
+        'Time (Sec.)', 'visible', 'grid', 'save', 'lp-2-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues3(r1:r2,end))], ...
+        'Offset Linear Potentiometer 3', 'Distance (in.)', ...
+        'Time (Sec.)', 'visible', 'grid', 'save', 'lp-3-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues4(r1:r2,end))], ...
+        'Offset Linear Potentiometer 4', 'Distance (in.)', ...
+        'Time (Sec.)', 'visible', 'grid', 'save', 'lp-4-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues1(r1:r2,end)) offset(lpValues2(r1:r2,end))], ...
+        'Offset Linear Potentiometer 1 & 2', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP1','LP2'}, 'visible', 'grid', 'save', 'lp-12-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues3(r1:r2,end)) offset(lpValues4(r1:r2,end))], ...
+        'Offset Linear Potentiometer 3 & 4', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP3','LP4'}, 'visible', 'grid', 'save', 'lp-34-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues1(r1:r2,end)) offset(lpValues3(r1:r2,end))], ...
+        'Offset Linear Potentiometer 1 & 3', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP1','LP3'}, 'visible', 'grid', 'save', 'lp-13-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues2(r1:r2,end)) offset(lpValues4(r1:r2,end))], ...
+        'Offset Linear Potentiometer 2 & 4', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP2','LP4'}, 'visible', 'grid', 'save', 'lp-24-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lp(r1:r2,5)) offset(lp(r1:r2,6))], ...
+        'Offset Linear Potentiometer Averages', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP1&2','LP3&4'}, 'visible', 'grid', 'save', 'lp-avg-offset');
+    
+    smartPlot(NormTime(r1:r2), [offset(lpValues1(r1:r2,end)) offset(lpValues2(r1:r2,end)) offset(lpValues1(r1:r2,end)) offset(lpValues2(r1:r2,end))], ...
+        'Offset Linear Potentiometer 2 & 4', 'Time (sec)', 'Length (in)', ...
+        'legend', {'LP1','LP2','LP3','LP4'}, 'visible', 'grid', 'save', 'lp-all-offset');
     
     %%%% Hysteresis %%%%
     disp('Plotting hysteresis data');
@@ -747,15 +870,3 @@ if ProcessOutputPlots == true
         'Offset Hysteresis Using WP Group 3 (Method 2)', 'Rotation (rad)', ...
         'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g32-offset');
 end
-
-%{
-lc2(:,7) = offset(lc(:,7));
-lc2(:,6) = offset(lc(:,6));
-lc2(:,5) = offset(lc(:,5));
-for s = 1:1:size(lc,1)
-    mo(s,1) = lc2(s,7)*27 - lc2(s,6)*27 - lc2(s,5)*48;
-    mo(s,2) = lc2(s,7)*27 - lc2(s,6)*27;
-end
-figure
-plot(beamRotation, mo(:,2))
-%}
