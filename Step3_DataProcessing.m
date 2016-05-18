@@ -367,33 +367,31 @@ if ProcessBeamRotation == true
     %Slope beam instrument grouping 2 (closest to floor)
     m16 = (wp(1,13)*sin(mean(wpAngles(1:50,17))) - 0)/(wp(1,13)*cos(mean(wpAngles(1:50,17))) - D6/2);
     
-    for i = 1:1:size(wp,1)
-        %Compare current angle between sides a & b (angle gamma) to the
-        %initial angle.
-        beamRotation(i,1) = wpAngles(i, 3) - beamInitialAngle1;
-        beamRotation(i,2) = wpAngles(i, 6) - beamInitialAngle2;
-        beamRotation(i,3) = wpAngles(i, 9) - beamInitialAngle3;
-        beamRotation(i,4) = wpAngles(i, 14) - beamInitialAngle5;
-        beamRotation(i,5) = wpAngles(i, 17) - beamInitialAngle6;
-        
-        %Current slope of the triangle median for the top of the beam,
-        %bottom of the beam, and pivot rod, bottom group 1 and bottom
-        %group 2, respectively.
-        m21 = (wp(i,7)*sin(wpAngles(i,2)) - 0)/(wp(i,7)*cos(wpAngles(i,2)) - D1/2);
-        m22 = (wp(i,2)*sin(wpAngles(i,5)) - 0)/(wp(i,2)*cos(wpAngles(i,5)) - D2/2);
-        m23 = (wp(i,6)*sin(wpAngles(i,8)) - 0)/(wp(i,6)*cos(wpAngles(i,8)) - 2);
-        m25 = (wp(i,3)*sin(wpAngles(i,14)) - 0)/(wp(i,3)*cos(wpAngles(i,14)) - D5/2);
-        m26 = (wp(i,13)*sin(wpAngles(i,17)) - 0)/(wp(i,13)*cos(wpAngles(i,17)) - D6/2);
-        
-        %Calculate the angle between the initial and current median for the
-        %top of the beam, bottom of the beam, and pivot rod, bottom group 1
-        %and bottom group 2, respectively.
-        beamRotation(i,6)  = atan2((m21 - m11),(1 + m11*m21));
-        beamRotation(i,7)  = atan2((m22 - m12),(1 + m12*m22));
-        beamRotation(i,8)  = atan2((m23 - m13),(1 + m13*m23));
-        beamRotation(i,9)  = atan2((m25 - m15),(1 + m15*m25));
-        beamRotation(i,10) = atan2((m26 - m16),(1 + m16*m26)); 
-    end
+    %Compare current angle between sides a & b (angle gamma) to the
+    %initial angle.
+    beamRotation(:,1) = wpAngles(:, 3) - beamInitialAngle1;
+    beamRotation(:,2) = wpAngles(:, 6) - beamInitialAngle2;
+    beamRotation(:,3) = wpAngles(:, 9) - beamInitialAngle3;
+    beamRotation(:,4) = wpAngles(:, 14) - beamInitialAngle5;
+    beamRotation(:,5) = wpAngles(:, 17) - beamInitialAngle6;
+    
+    %Current slope of the triangle median for the top of the beam,
+    %bottom of the beam, and pivot rod, bottom group 1 and bottom
+    %group 2, respectively.
+    m21 = (wp(:,7).*sin(wpAngles(:,2)) - 0)./(wp(:,7).*cos(wpAngles(:,2)) - D1/2);
+    m22 = (wp(:,2).*sin(wpAngles(:,5)) - 0)./(wp(:,2).*cos(wpAngles(:,5)) - D2/2);
+    m23 = (wp(:,6).*sin(wpAngles(:,8)) - 0)./(wp(:,6).*cos(wpAngles(:,8)) - 2);
+    m25 = (wp(:,3).*sin(wpAngles(:,14)) - 0)./(wp(:,3).*cos(wpAngles(:,14)) - D5/2);
+    m26 = (wp(:,13).*sin(wpAngles(:,17)) - 0)./(wp(:,13).*cos(wpAngles(:,17)) - D6/2);
+    
+    %Calculate the angle between the initial and current median for the
+    %top of the beam, bottom of the beam, and pivot rod, bottom group 1
+    %and bottom group 2, respectively.
+    beamRotation(:,6)  = atan2((m21 - m11),(1 + m11*m21));
+    beamRotation(:,7)  = atan2((m22 - m12),(1 + m12*m22));
+    beamRotation(:,8)  = atan2((m23 - m13),(1 + m13*m23));
+    beamRotation(:,9)  = atan2((m25 - m15),(1 + m15*m25));
+    beamRotation(:,10) = atan2((m26 - m16),(1 + m16*m26));
     
     clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6;
     disp('Beam rotations calculated.. Appending to data file.');
