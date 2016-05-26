@@ -10,10 +10,10 @@ global ProcessFileName %So we can pick this up in function calls
 global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
-ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-16-16';
-ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-16-16';
-ProcessRealName              = 'Full Scale Test 1 - ST2 Only - 05-16-16';
-ProcessCodeName              = 'FST-ST2-May16-1';
+ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-09-16';
+ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-09-16';
+ProcessRealName              = 'Full Scale Test 4 - ST2 Only - 05-09-16';
+ProcessCodeName              = 'FST-ST2-May09-4';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
 localAppend                  = true;
@@ -35,7 +35,7 @@ ProcessForces                = true;
 ProcessMoments               = true;
 ProcessEQM                   = true;
 ProcessGarbageCollection     = false;
-ProcessOutputPlots           = true;
+ProcessOutputPlots           = false;
 
 % The very end where the pivot rests serves as reference for all
 % measurements. All measurements are assumed to start at the extreme end of
@@ -44,16 +44,16 @@ ProcessOutputPlots           = true;
 % wire. Dimensions for the wire pots can be found in Fig. 2 of page 68
 % (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
 
-wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + 5.07)];
-wp12Pos = [(13+7/8)+0.39 (23.1875+0.1250+5.07)];
-wp21Pos = [(5.07+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
-wp22Pos = [(5.07+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
+wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + (5.07-2.71654))];
+wp12Pos = [(13+7/8)+0.39 (23.1875+0.1250+(5.07-2.71654))];
+wp21Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
+wp22Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
 wp31Pos = [0 0];
 wp32Pos = [0 0];
-wp41Pos = [(5.07+0.125) (48.125+0.39)];
-wp42Pos = [(5.07+0.125) (32.1875+0.39)];
-wp71Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + 5.07)]; %Same as WP1-1 in theory
-wp72Pos = [(13+7/8)+0.39 (23.1875+0.1250+5.07)];             %Same as WP1-2 in theory
+wp41Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];
+wp42Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)];
+wp71Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + (5.07-2.71654))]; %Same as WP1-1 in theory
+wp72Pos = [(13+7/8)+0.39 (23.1875+0.1250+(5.07-2.71654))];             %Same as WP1-2 in theory
 D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
 D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
 D3 = 4; %WP group measuring bottom global position
@@ -63,7 +63,7 @@ D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 
 %Constants
 modulus      = 29000; %Modulus of elasticity (ksi)
-boltEquation = 0;
+boltEquation = 0.1073559499;
 gaugeLength  = [0.19685; 0.19685]; %(in) which is 5 mm
 gaugeWidth   = [0.0590551; 0.19685]; %(in) which is 1.5 mm
 
@@ -122,6 +122,7 @@ if ProcessConsolidateWPs == true
     wp(:,11) = wp62(:,1);
     wp(:,12) = wp71(:,1);
     wp(:,13) = wp72(:,1);
+    wp       = wp + 2.71654;
     wp(:,14) = MTSLVDT(:,1);
     
     disp('WP variables successfully converted into one. Appending to file and removing garbage.')
@@ -144,7 +145,7 @@ if ProcessConsolidateLPs == true
     lp(:,6)  = (offset(LP2(:,1)) + offset(LP4(:,1)))/2;
     
     disp('LP variables successfully converted into one. Appending to file and removing garbage.')
-    clearvars lp1 lp2 lp3 lp4;
+    clearvars LP1 LP2 LP3 LP4;
     if localAppend == true
         save(ProcessFileName, 'lp', '-append');
     end
@@ -179,7 +180,7 @@ if ProcessWPAngles == true
     
     disp('Processing angles');
     if runParallel == true
-        [wpAngles, wpAnglesDeg] = procWPAnglesPar((wp(:,:) + 2.71654), [D1, D2, D3, D4, D5, D6]);
+        [wpAngles, wpAnglesDeg] = procWPAnglesPar(wp(:,:), [D1, D2, D3, D4, D5, D6]);
     else
         [wpAngles, wpAnglesDeg] = procWPAngles(wp);
     end
@@ -217,44 +218,74 @@ if ProcessWPAngles == true
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE X & Y COORDINATES FOR C VERTEX OF WIRE POT TRIANGLES           %
+%CALCULATE HEIGHT OF WIRE POT TRIANGLES                                   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%See "heLP lawOfCos" for angle orientation information.
-
-%Determine XY of triangles using both angles and compare them as a fail
-%safe. Comparison is only carried out to three decimal places.
-%Realistically the wire pots are likely only moderatly accurate to the
-%second decimal place but a third heLPs with round-off error in floating
-%math.
-
-%Coded in accordance to wire-pot configuration in place 04/01/16
+%Use Heron's Formula to determine the area of the triangle made by the
+%wirepots and then backsolve formula for area of triangle to get triangle
+%height. This can be backsolved
+%to calculate d which is the distance from vertex A to line h with line h
+%being the line perpendicular to line c and extending to vertex C. See
+%derivation sheet.
 if ProcessWPCoords == true
-    for r = 1:1:size(wp,1)
-        %WP Group 1
-        wpCoords(r,1:2) = [wp11Pos(1,1)+wp(r,1)*cos(((3/2)*pi)-wpAngles(r,1)) wp11Pos(1,2)-wp(r,1)*sin(((3/2)*pi)-wpAngles(r,1))];
-        wpCoords(r,3:4) = [wp41Pos(1,1)+wp(r,7)*cos(wpAngles(r,2)) wp41Pos(1,2)+wp(r,7)*sin(wpAngles(r,2))];
- 
-        %WP Group 2
-        wpCoords(r,5:6) = [wp42Pos(1,1)+wp(r,8)*sin(wpAngles(r,4)) wp42Pos(1,2)+wp(r,8)*sin(-wpAngles(r,4))];
-        wpCoords(r,7:8) = [wp12Pos(1,1)+wp(r,2)*cos(pi-wpAngles(r,5)) wp12Pos(1,2)+wp(r,2)*cos(wpAngles(r,5))];
-        
-        %wpCoords(r,13) = (wpCoords(r,6) - wpCoords(r,2))/(wpCoords(r,5) - wpCoords(r,1));
-        %wpCoords(r,14) = (wpCoords(r,8) - wpCoords(r,4))/(wpCoords(r,7) - wpCoords(r,3));
-        %WP Group 2
-       % wpCoords(r,9:10) = [wp(r,5)*cos(wpAngles(r,7)) wp(r,5)*sin(wpAngles(r,7))];
-        %wpCoords(r,11:12) = [wp(r,6)*cos(wpAngles(r,8)) wp(r,6)*sin(wpAngles(r,8))];
-        
-        %{
-        if any(round(wpCoords(r,1:2),3) ~= round(wpCoords(r,3:4),3))
-            error('Danger, Will Robinson! Angles #%d for WPG1 do not match (%f,%f,%f,%f)',r,wpCoords(r,1), wpCoords(r,2), wpCoords(r,3), wpCoords(r,4));
-        end
-        %}
-        
-    end
+    %Get (x3,y3) coords of vertex C of wire pot triangles
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %WP G1 Top
+    coordAngles(:,1) = atan2((wp11Pos(2)-wp41Pos(2)),(wp11Pos(1)-wp41Pos(1))) - wpAngles(:,2);
+    x3Loc(:,1) = wp(:,7).*cos(coordAngles(:,1));
+    x3Glo(:,1) = wp41Pos(1) + x3Loc(:,1);
+    
+    y3Loc(:,1) = wp(:,1) + (wp(:,7).*sin(coordAngles(:,1)));
+    y3Glo(:,1) = wp11Pos(2) + wp(:,7).*sin(coordAngles(:,1));
+    
+    %WP G2 Top
+    coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
+    x3Loc(:,2) = wp(:,8).*cos(coordAngles(:,2));
+    x3Glo(:,2) = wp42Pos(1) + x3Loc(:,2);
+    
+    y3Loc(:,2) = wp(:,2) + (wp(:,8).*sin(coordAngles(:,2)));
+    y3Glo(:,2) = wp12Pos(2) + wp(:,8).*sin(coordAngles(:,2));
+    
+    %WP G1 Bottom
+    coordAngles(:,3) = atan2((wp71Pos(2)-wp42Pos(2)),(wp71Pos(1)-wp21Pos(1))) - wpAngles(:,14);
+    x3Loc(:,3) = wp(:,3).*cos(coordAngles(:,3));
+    x3Glo(:,3) = wp21Pos(1) + x3Loc(:,1);
+    
+    y3Loc(:,3) = wp(:,12) + (wp(:,3).*sin(coordAngles(:,3)));
+    y3Glo(:,3) = wp71Pos(2) + wp(:,3).*sin(coordAngles(:,3));
+    
+    %WP G2 Bottom
+    coordAngles(:,4) = atan2((wp22Pos(2)-wp72Pos(2)),(wp72Pos(1)-wp22Pos(1))) - wpAngles(:,17);
+    x3Loc(:,4) = wp(:,4).*cos(coordAngles(:,4));
+    x3Glo(:,4) = wp22Pos(1) + x3Loc(:,1);
+    
+    y3Loc(:,4) = wp(:,13) + (wp(:,4).*sin(coordAngles(:,4)));
+    y3Glo(:,4) = wp72Pos(2) + wp(:,4).*sin(coordAngles(:,4));
+    
+    %Get (x4,y4) coords middle of line c
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %Don't need a local since it would just be half the length of the line
+    %C which we calculate in the D* variables.
+    
+    %WP G1 Top
+    x4Glo(:,1) = (wp41Pos(1) + wp11Pos(1))/2; 
+    y4Glo(:,1) = (wp41Pos(2) + wp11Pos(2))/2;
+    
+    %WP G1 Bottom
+    x4Glo(:,2) = (wp21Pos(1) + wp71Pos(1))/2; 
+    y4Glo(:,2) = (wp21Pos(2) + wp71Pos(2))/2;
+    
+    %WP G2 Top
+    x4Glo(:,3) = (wp42Pos(1) + wp12Pos(1))/2; 
+    y4Glo(:,3) = (wp42Pos(2) + wp12Pos(2))/2;
+    
+    %WP G2 Bottom
+    x4Glo(:,4) = (wp22Pos(1) + wp72Pos(1))/2; 
+    y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY                     %
+%CALCULATE HEIGHT OF WIRE POT TRIANGLES                                   %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Use Heron's Formula to determine the area of the triangle made by the
 %wirepots and then backsolve formula for area of triangle to get triangle
@@ -274,7 +305,7 @@ if ProcessWPHeights == true
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS IMU DATA                                                         %
+%PROCESS LP DATA                                                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ProcessLPs == true
     load('C:\Users\clk0032\Dropbox\Friction Connection Research\Linear Spring Potentiometer Calibration\LPCal.mat');
@@ -332,8 +363,7 @@ if processIMU == true
     %Pitch (beta) (CC Y Axis)
     %Roll (gamma) (CC X Axis)
     IMUA = [anglesA(DACTimeIndex,1) anglesA(DACTimeIndex,2) anglesA(DACTimeIndex,3)];
-    IMUB = [anglesB(DACTimeIndex,1) anglesB(DACTimeIndex,2) anglesB(DACTimeIndex,3)];
-    
+    IMUB = [anglesB(DACTimeIndex,1) anglesB(DACTimeIndex,2) anglesB(DACTimeIndex,3)];    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -392,6 +422,42 @@ if ProcessBeamRotation == true
     beamRotation(:,8)  = atan2((m23 - m13),(1 + m13*m23));
     beamRotation(:,9)  = atan2((m25 - m15),(1 + m15*m25));
     beamRotation(:,10) = atan2((m26 - m16),(1 + m16*m26));
+    
+    %Calculate the rotation of the beam using the displacement of two
+    %wirepots.
+    %Calculate beam rotations using displacement. Merky and assumes small
+    %angle. Won't work during tear-out accurately due to assumption of no
+    %rotation of the column. Will think about later
+    byInit  = 16;
+    bxInit1 = wp(1001, 7);
+    bxInit2 = wp(1001, 8);
+    for r = 1001:1:size(wp,1);
+        if wp(r,7) > wp(r,8)
+            dx = wp(r,7) - bxInit1;
+            beamRotation(r,11) = atan2(byInit, dx);
+        elseif wp(r,7) < wp(r,8)
+            dx = wp(r,8) - bxInit2;
+            beamRotation(r,11) = atan2(byInit, dx);
+        else
+            beamRotation(r,11) = NaN;
+        end
+    end
+    
+    byInit  = 16;
+    bxInit1 = wp(1001, 3);
+    bxInit2 = wp(1001, 4);
+    for r = 1001:1:size(wp,1);
+        if wp(r,3) > wp(r,4)
+            dx = wp(r,3) - bxInit1;
+            beamRotation(r,12) = atan2(byInit, dx);
+        elseif wp(r,3) < wp(r,4)
+            dx = wp(r,4) - bxInit2;
+            beamRotation(r,12) = atan2(byInit, dx);
+        else
+            beamRotation(r,12) = NaN;
+        end
+    end
+    
     
     clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6;
     disp('Beam rotations calculated.. Appending to data file.');
@@ -868,3 +934,61 @@ if ProcessOutputPlots == true
         'Offset Hysteresis Using WP Group 3 (Method 2)', 'Rotation (rad)', ...
         'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g32-offset');
 end
+
+%{
+%Numerically stable Heron's Formula to get area and from there height.
+    %requires sorting so that a >= b >= c.
+    lengthOfWPArray = size(wp,1);
+    
+    %WP Set 1
+    wp1Set      = [wp(:,1) wp(:,7) repmat(D1, [lengthOfWPArray, 1])];
+    wpArea(:,1) = heronsFormula(wp1Set);
+    %WP Set 2
+    wp2Set      = [wp(:,2) wp(:,8) repmat(D2, [lengthOfWPArray, 1])];
+    wpArea(:,2) = heronsFormula(wp2Set);
+    %WP Set 3
+    wp3Set      = [wp(:,6) wp(:,5) repmat(D3, [lengthOfWPArray, 1])];
+    wpArea(:,3) = heronsFormula(wp3Set);
+    %WP Set 4
+    % wp4cDist = sqrt(wp(50,7)^2 + wp(50,1)^2);
+    %wpArea(:,4) = heronsFormula([wp(:,12) wp(:,9) repmat(wp4cDist, [lengthOfWPArray, 1])]);
+    %WP Set 5
+    wp5Set      = [wp(:,3) wp(:,12) repmat(D5, [lengthOfWPArray, 1])];
+    wpArea(:,5) = heronsFormula(wp5Set);
+    %WP Set 6
+    %Not implemented yet
+    
+    %Calculate heigh of triangle (line perp to line c extending to vertext
+    %c)
+    wpHeight = 2.*[wpArea(:,1)./wp1Set(:,3) ...
+                   wpArea(:,2)./wp2Set(:,3) ...
+                   wpArea(:,3)./wp3Set(:,3) ...
+                   repmat(0, [lengthOfWPArray, 1]) ...
+                   wpArea(:,5)./wp5Set(:,3) ...
+                  ]; 
+    
+    %Get d, the distance from A to line segment h along line c (A on left
+    %hand side)
+    wpd2 = [(-wp1Set(:,1).^2 + wp1Set(:,2).^2 + wp1Set(:,3).^2)./(2.*wp1Set(:,3))];
+    wpd = [sqrt(wp1Set(:,2).^2 - wpHeight(:,1).^2) ...
+           sqrt(wp2Set(:,2).^2 - wpHeight(:,2).^2) ...
+           sqrt(wp3Set(:,2).^2 - wpHeight(:,3).^2) ...
+           repmat(0, [lengthOfWPArray, 1]) ...
+           sqrt(wp5Set(:,2).^2 - wpHeight(:,5).^2) ...
+          ];
+   
+    %Get coordinates of vertex C on wire pot triangles. Method used as
+    %detailed at http://paulbourke.net/geometry/circlesphere/ under
+    %"Intersection of two circles" written by Paul Bourke, 1997
+    
+    xd31 = (D1 - wpd(:,1)).*sin(wpAngles(:,2));
+    yd31 = (D1 - wpd(:,1)).*cos(wpAngles(:,2));
+    
+    x311 = yd31 + wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
+    x312 = yd31 - wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
+    
+    y311 = wpHeight(:,1) + wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
+    y312 = wpHeight(:,1) - wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
+    wpx = [];
+    wpy = [];
+%}
