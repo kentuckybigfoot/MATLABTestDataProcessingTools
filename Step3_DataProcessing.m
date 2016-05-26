@@ -45,7 +45,7 @@ ProcessOutputPlots           = false;
 % (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
 
 wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + (5.07-2.71654))];
-wp12Pos = [(13+7/8)+0.39 (23.1875+0.1250+(5.07-2.71654))];
+wp12Pos = [(13+7/8)+0.39 (22.9375+0.1875+0.1250+(5.07-2.71654))];
 wp21Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
 wp22Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
 wp31Pos = [0 0];
@@ -235,32 +235,32 @@ if ProcessWPCoords == true
     x3Loc(:,1) = wp(:,7).*cos(coordAngles(:,1));
     x3Glo(:,1) = wp41Pos(1) + x3Loc(:,1);
     
-    y3Loc(:,1) = wp(:,1) + (wp(:,7).*sin(coordAngles(:,1)));
-    y3Glo(:,1) = wp11Pos(2) + wp(:,7).*sin(coordAngles(:,1));
+    y3Loc(:,1) = (wp11Pos(2)-wp41Pos(2)) + (wp(:,7).*sin(coordAngles(:,1)));
+    y3Glo(:,1) = wp11Pos(2) + y3Loc(:,1);
     
     %WP G2 Top
     coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
     x3Loc(:,2) = wp(:,8).*cos(coordAngles(:,2));
     x3Glo(:,2) = wp42Pos(1) + x3Loc(:,2);
     
-    y3Loc(:,2) = wp(:,2) + (wp(:,8).*sin(coordAngles(:,2)));
-    y3Glo(:,2) = wp12Pos(2) + wp(:,8).*sin(coordAngles(:,2));
+    y3Loc(:,2) = (wp42Pos(2)-wp12Pos(2)) + (wp(:,8).*sin(coordAngles(:,2)));
+    y3Glo(:,2) = wp12Pos(2) + y3Loc(:,2);
     
     %WP G1 Bottom
-    coordAngles(:,3) = atan2((wp71Pos(2)-wp42Pos(2)),(wp71Pos(1)-wp21Pos(1))) - wpAngles(:,14);
+    coordAngles(:,3) = atan2((wp71Pos(2)-wp21Pos(2)),(wp71Pos(1)-wp21Pos(1))) - wpAngles(:,14);
     x3Loc(:,3) = wp(:,3).*cos(coordAngles(:,3));
     x3Glo(:,3) = wp21Pos(1) + x3Loc(:,1);
     
-    y3Loc(:,3) = wp(:,12) + (wp(:,3).*sin(coordAngles(:,3)));
-    y3Glo(:,3) = wp71Pos(2) + wp(:,3).*sin(coordAngles(:,3));
+    y3Loc(:,3) = (wp71Pos(2)-wp21Pos(2)) + (wp(:,3).*sin(coordAngles(:,3)));
+    y3Glo(:,3) = wp71Pos(2) + y3Loc(:,3);
     
     %WP G2 Bottom
-    coordAngles(:,4) = atan2((wp22Pos(2)-wp72Pos(2)),(wp72Pos(1)-wp22Pos(1))) - wpAngles(:,17);
+    coordAngles(:,4) = atan2((wp22Pos(2)-wp72Pos(2)),(wp72Pos(1)-wp22Pos(1))) - wpAngles(:,16);
     x3Loc(:,4) = wp(:,4).*cos(coordAngles(:,4));
     x3Glo(:,4) = wp22Pos(1) + x3Loc(:,1);
     
-    y3Loc(:,4) = wp(:,13) + (wp(:,4).*sin(coordAngles(:,4)));
-    y3Glo(:,4) = wp72Pos(2) + wp(:,4).*sin(coordAngles(:,4));
+    y3Loc(:,4) = (wp22Pos(2)-wp72Pos(2)) + (wp(:,4).*sin(coordAngles(:,4)));
+    y3Glo(:,4) = wp72Pos(2) + y3Loc(:,4);
     
     %Get (x4,y4) coords middle of line c
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -282,26 +282,6 @@ if ProcessWPCoords == true
     %WP G2 Bottom
     x4Glo(:,4) = (wp22Pos(1) + wp72Pos(1))/2; 
     y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE HEIGHT OF WIRE POT TRIANGLES                                   %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Use Heron's Formula to determine the area of the triangle made by the
-%wirepots and then backsolve formula for area of triangle to get triangle
-%height.
-if ProcessWPHeights == true
-    if runParallel == true
-        [wpAngleHeight] = procWPAngleHeightPar(wp);
-    else
-        [wpAngleHeight] = procWPAngleHeight(wp);
-    end
-    
-    disp('Wire pot angles calculated. Appending to file and removing garbage.');
-    clearvars wpS wpSOffset wpAngleArea wpAngleAreaOffset;
-    if localAppend == true
-        save(ProcessFileName, 'wpAngleHeight', '-append');
-    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
