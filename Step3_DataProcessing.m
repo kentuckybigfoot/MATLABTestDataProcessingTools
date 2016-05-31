@@ -44,7 +44,7 @@ ProcessOutputPlots           = false;
 % wire. Dimensions for the wire pots can be found in Fig. 2 of page 68
 % (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
 
-wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + (5.07-2.71654))];
+wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(38 + 2+ 5/16 + (5.07-2.71654))];
 wp12Pos = [(13+7/8)+0.39 (22.9375+0.1875+0.1250+(5.07-2.71654))];
 wp21Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
 wp22Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
@@ -236,7 +236,7 @@ if ProcessWPCoords == true
     x3Glo(:,1) = wp41Pos(1) + x3Loc(:,1);
     
     y3Loc(:,1) = (wp11Pos(2)-wp41Pos(2)) + (wp(:,7).*sin(coordAngles(:,1)));
-    y3Glo(:,1) = wp11Pos(2) + y3Loc(:,1);
+    y3Glo(:,1) = (wp11Pos(2) - (wp11Pos(2)-wp41Pos(2))) + y3Loc(:,1);
     
     %WP G2 Top
     coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
@@ -249,18 +249,18 @@ if ProcessWPCoords == true
     %WP G1 Bottom
     coordAngles(:,3) = atan2((wp71Pos(2)-wp21Pos(2)),(wp71Pos(1)-wp21Pos(1))) - wpAngles(:,14);
     x3Loc(:,3) = wp(:,3).*cos(coordAngles(:,3));
-    x3Glo(:,3) = wp21Pos(1) + x3Loc(:,1);
+    x3Glo(:,3) = wp21Pos(1) + x3Loc(:,3);
     
     y3Loc(:,3) = (wp71Pos(2)-wp21Pos(2)) + (wp(:,3).*sin(coordAngles(:,3)));
-    y3Glo(:,3) = wp71Pos(2) + y3Loc(:,3);
+    y3Glo(:,3) = (wp71Pos(2) - (wp71Pos(2)-wp21Pos(2))) + y3Loc(:,3);
     
     %WP G2 Bottom
     coordAngles(:,4) = atan2((wp22Pos(2)-wp72Pos(2)),(wp72Pos(1)-wp22Pos(1))) - wpAngles(:,16);
     x3Loc(:,4) = wp(:,4).*cos(coordAngles(:,4));
-    x3Glo(:,4) = wp22Pos(1) + x3Loc(:,1);
+    x3Glo(:,4) = wp22Pos(1) + x3Loc(:,4);
     
     y3Loc(:,4) = (wp22Pos(2)-wp72Pos(2)) + (wp(:,4).*sin(coordAngles(:,4)));
-    y3Glo(:,4) = wp72Pos(2) + y3Loc(:,4);
+    y3Glo(:,4) = wp22Pos(2) + y3Loc(:,4);
     
     %Get (x4,y4) coords middle of line c
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -281,7 +281,7 @@ if ProcessWPCoords == true
     
     %WP G2 Bottom
     x4Glo(:,4) = (wp22Pos(1) + wp72Pos(1))/2; 
-    y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;
+    y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -403,43 +403,68 @@ if ProcessBeamRotation == true
     beamRotation(:,9)  = atan2((m25 - m15),(1 + m15*m25));
     beamRotation(:,10) = atan2((m26 - m16),(1 + m16*m26));
     
-    %Calculate the rotation of the beam using the displacement of two
-    %wirepots.
-    %Calculate beam rotations using displacement. Merky and assumes small
-    %angle. Won't work during tear-out accurately due to assumption of no
-    %rotation of the column. Will think about later
-    byInit  = 16;
-    bxInit1 = wp(1001, 7);
-    bxInit2 = wp(1001, 8);
-    for r = 1001:1:size(wp,1);
-        if wp(r,7) > wp(r,8)
-            dx = wp(r,7) - bxInit1;
-            beamRotation(r,11) = atan2(byInit, dx);
-        elseif wp(r,7) < wp(r,8)
-            dx = wp(r,8) - bxInit2;
-            beamRotation(r,11) = atan2(byInit, dx);
+    %Use vectors to determine total rotation of beam
+    %For top wirepot groups
+    Vi = [x3Glo(1,1)-x3Glo(1,2) y3Glo(1,1)-y3Glo(1,2)];
+    V = [x3Glo(:,1)-x3Glo(:,2) y3Glo(:,1)-y3Glo(:,2)];
+    
+    VDot(:,1) = dot(repmat(Vi,size(V,1),1), V, 2);
+    ViMag = sqrt(Vi(1)^2 + Vi(2)^2);
+    VMag(:,1) = sqrt(V(:,1).^2 + V(:,2).^2);
+    beamRotation(:,11) = acos(VDot./(ViMag * VMag));
+    
+    %For bottom wirepot groups
+    clearvars Vi V VDot ViMag VMag;
+    Vi = [x3Glo(1,3)-x3Glo(1,4) y3Glo(1,3)-y3Glo(1,4)];
+    V = [x3Glo(:,3)-x3Glo(:,4) y3Glo(:,3)-y3Glo(:,4)];
+    
+    VDot(:,1) = dot(repmat(Vi,size(V,1),1), V, 2);
+    ViMag = sqrt(Vi(1)^2 + Vi(2)^2);
+    VMag(:,1) = sqrt(V(:,1).^2 + V(:,2).^2);
+    beamRotation(:,12) = acos(VDot./(ViMag * VMag));
+    
+    %Use Horn's Method to calculate rotation and also get COR from this.
+    %See 
+    %http://people.csail.mit.edu/bkph/papers/Absolute_Orientation.pdf
+    %and
+    %http://www.mathworks.com/matlabcentral/fileexchange/26186-absolute-orientation-horn-s-method
+    
+    %Init posistion
+    pointsA = [[x3Glo(1,1); y3Glo(1,1)] [x3Glo(1,2); y3Glo(1,2)]]; 
+    pointsA2 = [[x3Glo(1,3); y3Glo(1,3)] [x3Glo(1,4); y3Glo(1,4)]];
+    
+    for r = 1:1:size(wp,1);
+        %Current Position
+        pointsB = [[x3Glo(r,1); y3Glo(r,1)] [x3Glo(r,2); y3Glo(r,2)]];
+        pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
+        
+        rotInfo(r) = absor(pointsA, pointsB);
+        rotInfo2(r) = absor(pointsA2, pointsB2);
+        
+        tempVar = rotInfo(r).theta;
+        tempVar2 = rotInfo2(r).theta;
+
+        if tempVar > 1
+            beamRotation(r,13) = tempVar - 360;
         else
-            beamRotation(r,11) = NaN;
+            beamRotation(r,13) = tempVar;
         end
-    end
-    
-    byInit  = 16;
-    bxInit1 = wp(1001, 3);
-    bxInit2 = wp(1001, 4);
-    for r = 1001:1:size(wp,1);
-        if wp(r,3) > wp(r,4)
-            dx = wp(r,3) - bxInit1;
-            beamRotation(r,12) = atan2(byInit, dx);
-        elseif wp(r,3) < wp(r,4)
-            dx = wp(r,4) - bxInit2;
-            beamRotation(r,12) = atan2(byInit, dx);
+        
+        if tempVar2 > 1
+            beamRotation(r,14) = tempVar2 - 360;
         else
-            beamRotation(r,12) = NaN;
+            beamRotation(r,14) = tempVar2;
         end
-    end
+        
+        %With the translation and rotation matrix from absor() we know that
+        %COR=R*x + t describes the center of rotation if we find a point on
+        %X that does not change. Matrix backsolving gives us x = (eye(2) -
+        %R)\t.
+        beamCOR(r,:) = (eye(2)-rotInfo(r).R)\rotInfo(r).t;
+
+    end 
     
-    
-    clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6;
+    clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
     if localAppend == true
         save(ProcessFileName, 'beamRotation', '-append');
@@ -581,7 +606,7 @@ if ProcessForces == true
     end
 end
 
-
+%{
 if ProcessShearTab == '2' || ProcessShearTab == '4'
     gaugeRange = 2:5;
     gaugeRangeExt = 1:6;
@@ -612,6 +637,7 @@ for q = 1:1:length(variableList)
         end
     end
 end
+%}
 
 if ProcessMoments == true
     %Generate strain gauge width increments
