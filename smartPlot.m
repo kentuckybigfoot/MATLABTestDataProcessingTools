@@ -21,6 +21,7 @@ function [  ] = smartPlot( x, y, plotName, plotXlabel, plotYlabel, varargin)
 %Pick up naming information without cluttering up fxn parameters
 global ProcessRealName
 global ProcessCodeName
+global ProcessFilePath
 
 numArg = nargin;
 legendOn = false;
@@ -31,6 +32,10 @@ showDetails = false;
 if numArg < 5
     disp('Not enough input variables');
     return
+end
+
+if isempty(ProcessFilePath);
+    ProcessFilePath = '..\';
 end
 
 %Most commonly plotting against time so this replaces having to type a
@@ -86,10 +91,14 @@ end
 
 %Push saving till the end incase save is called before other options in
 %function. This prevents plot from saving before all requested features are
-%present
+%present.
 if savePlot == true
-    saveas(gcf, fullfile('..\',ProcessCodeName,savePlotName), 'png')
-    saveas(gcf, fullfile('..\',ProcessCodeName,savePlotName), 'svg')
+    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,savePlotName), 'png')
+    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,savePlotName), 'svg')
+    
+    if strcmp(h.Visible,'off') %Clears memory of phantom plots.
+        close(h);
+    end
 end
 
 %Status function. Saving a plot can take some time therefore it's good to
