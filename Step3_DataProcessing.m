@@ -354,8 +354,8 @@ if ProcessBeamRotation == true
     beamInitialAngle1 = mean(wpAngles(1:50,3)); %Initial angle top of beam
     beamInitialAngle2 = mean(wpAngles(1:50,6)); %Initial angle bot of beam
     beamInitialAngle3 = mean(wpAngles(1:50,9)); %Initial angle of pivot rod
-    beamInitialAngle5 = mean(wpAngles(1:50,14)); %Initial angle bot of beam
-    beamInitialAngle6 = mean(wpAngles(1:50,17)); %Initial angle of pivot rod
+    beamInitialAngle5 = mean(wpAngles(1:50,14)); %Initial angle top of beam
+    beamInitialAngle6 = mean(wpAngles(1:50,17)); %Initial angle of bot rod
     
     %Determine the initial slope of the triangles' median (midpoint of
     %length c to vertex C). This is done so that later the current slope
@@ -441,28 +441,26 @@ if ProcessBeamRotation == true
         rotInfo(r) = absor(pointsA, pointsB);
         rotInfo2(r) = absor(pointsA2, pointsB2);
         
-        tempVar = rotInfo(r).theta;
-        tempVar2 = rotInfo2(r).theta;
-
-        if tempVar > 1
-            beamRotation(r,13) = tempVar - 360;
-        else
-            beamRotation(r,13) = tempVar;
-        end
-        
-        if tempVar2 > 1
-            beamRotation(r,14) = tempVar2 - 360;
-        else
-            beamRotation(r,14) = tempVar2;
-        end
-        
         %With the translation and rotation matrix from absor() we know that
         %COR=R*x + t describes the center of rotation if we find a point on
         %X that does not change. Matrix backsolving gives us x = (eye(2) -
         %R)\t.
-        beamCOR(r,:) = (eye(2)-rotInfo(r).R)\rotInfo(r).t;
-
+        %beamCOR(r,1:2) = (eye(2)-rotInfo(r).R)\rotInfo(r).t;
+        %beamCOR(r,2:4) = (eye(2)-rotInfo2(r).R)\rotInfo2(r).t;
     end 
+    
+    tempVar = [rotInfo(:).theta].';
+    tempVar2 = [rotInfo2(:).theta].';
+    
+    [row1, col1] = find(tempVar > 1);
+    [row2, col2] = find(tempVar2 > 1);
+    
+    beamRotation(:,13) = tempVar;
+    beamRotation(:,14) = tempVar2;
+    
+    beamRotation(row1,13) = beamRotation(row1,13) - 360;
+    beamRotation(row2,14) = beamRotation(row2,14) - 360;
+
     
     clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
@@ -725,14 +723,17 @@ if ProcessMoments == true
         
         %Adjust due to rotation changing distance from roller to col. face
         %Method 1: Using average from linear potentiometers.
-        moment(:,7) = lc(:,7)*distG2 - lc(:,6)*distG1;
+        %moment(:,7) = lc(:,7)*distG2 - lc(:,6)*distG1;
         %Method 2: Using beam rotation from wire-pot group 3.
+        x1 = mean([2*wp41Pos(2).*sin((beamRotation(:,3)/10)/2) 2*wp21Pos(2).*sin((beamRotation(:,3)/10)/2)],2);
+        x2 = mean([2*wp42Pos(2).*sin((beamRotation(:,3)/10)/2) 2*wp22Pos(2).*sin((beamRotation(:,3)/10)/2)],2);
+        moment(:,7) = lc(:,7).*(distG2-x2) - lc(:,6).*(distG1-x1);
          
         %Need to implement. Will require measuring distance from center of
         %LCs to column. Will also have to take into count translation of
         %the beam/column.
     end
-    clearvars gaugeLength gaugeWidth stMidHeight x topLength botLength strainTop strainTop1 strainBot strainBot1 elongationTop elongationTop1 elongationBot elongationBot1
+    clearvars gaugeLength gaugeWidth stMidHeight x topLength botLength strainTop strainTop1 strainBot strainBot1 elongationTop elongationTop1 elongationBot elongationBot1 x1 x2
     if localAppend == true
         save(ProcessFileName, 'moment', '-append');
     end
