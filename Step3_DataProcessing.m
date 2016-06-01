@@ -500,28 +500,6 @@ if ProcessStrainProfiles == true
     
 end
 
-
-if ProcessCenterOfRotation == true
-    % Constants for location COR using WP heights. See commentary for COR4.
-    CORAverageRange = find(round(NormTime,3) == 7);
-    CORWPAverage    = mean(wpAngleHeight(1:CORAverageRange,3));
-    
-    for i = 1:1:size(strainRegression,1)
-        %Center of rotation along vertical width using strain gauges of shear tabs
-        %COR(i,1) = -strainRegression(i,1)/strainRegression(i,2); %roots([strainRegression(i,1) strainRegression(i,2)]);
-        %COR(i,2) = -strainRegression(i,4)/strainRegression(i,5); %roots([strainRegression(i,4) strainRegression(i,5)]);
-        
-        %Center of rotation along vertical width using strain gauges of shear tabs and column
-        %flange friction component
-        
-        %Change in center of rotation along vertical width using vertical height
-        %change measured by WP G3 at bottom of beam flange.
-        %Average WP G3 height from first 7 seconds of data since 10 seconds
-        %of flat line normally exists ahead of the start of testing.
-        %COR(i,4) = wpAngleHeight(i, 3) - CORWPAverage;
-    end
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %PROCESS FORCES FROM STRAIN GAUGES ON TEST SPECIMAN                       %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
