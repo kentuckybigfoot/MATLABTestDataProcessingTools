@@ -93,8 +93,8 @@ end
 %function. This prevents plot from saving before all requested features are
 %present.
 if savePlot == true
-    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,savePlotName), 'png')
-    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,savePlotName), 'svg')
+    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,'PNG',savePlotName), 'png')
+    saveas(gcf, fullfile(ProcessFilePath,ProcessCodeName,'SVG',savePlotName), 'svg')
     
     if strcmp(h.Visible,'off') %Clears memory of phantom plots.
         close(h);
