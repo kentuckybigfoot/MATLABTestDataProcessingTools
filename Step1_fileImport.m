@@ -2,24 +2,36 @@ clear all
 close all
 clc
 
-textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-27-16\'; %Location of File
-textFileName     = 'fs testing -st2 - 05-27-16Run'; %Name of file to be processed
-textFileSeed     = 7000;
-t_saveFileAs     = fullfile(textFileLocation, 'FS Testing - ST2 - Test 7 - 05-27-16'); %What to name file upon save
-t_saveFileAs2    = fullfile(textFileLocation, '[Filter]FS Testing - ST2 - Test 7 - 05-27-16');
-amount           = 31;
+t_textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 06-01-16\'; %Location of File
+t_textFileName     = 'fs testing -st2 - 06-01-16Run'; %Name of file to be processed
+t_textFileSeed     = 10000;
+t_saveFileAs       = fullfile(t_textFileLocation, 'FS Testing - ST2 - Test 10 - 06-01-16'); %What to name file upon save
+t_saveFileAs2      = fullfile(t_textFileLocation, '[Filter]FS Testing - ST2 - Test 10 - 06-01-16');
+t_amount           = 204; %42;
 
-names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4'};
-formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
+t_names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4'};
+t_formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
 
-for y = 1:1:length(names)
-    eval(sprintf('%s = [];',names{y}));
+%Create empty doubles for empty file
+for t_y = 1:1:length(t_names)
+	eval(sprintf('%s = [];',t_names{t_y}));
 end
 
-for z = 1:1:amount;
-    %% Initialize variables.
+%Same empty file to write to
+save(t_saveFileAs, '-v7.3', '-regexp', '^(?!t_.*$).');
 
-    filename = sprintf('%s%s%d.txt',textFileLocation,textFileName,((textFileSeed+z)-1))
+m = matfile(t_saveFileAs, 'Writable', true);
+%Variable to save row count of each file
+lengthOfFile = [];
+
+for t_r = 1:1:t_amount;
+    tic
+    %% Initialize variables.
+    for t_y = 1:1:length(t_names)
+        eval(sprintf('%s = [];',t_names{t_y}));
+    end
+    
+    filename = sprintf('%s%s%d.txt',t_textFileLocation,t_textFileName,((t_textFileSeed+t_r)-1));
     delimiter = '\t';
     startRow = 14;
 
@@ -27,7 +39,7 @@ for z = 1:1:amount;
     fileID = fopen(filename,'r');
 
     %% Read columns of data according to format string.
-    dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'HeaderLines' ,startRow-1, 'ReturnOnError', false);
+    dataArray = textscan(fileID, t_formatSpec, 'Delimiter', delimiter, 'HeaderLines' ,startRow-1, 'ReturnOnError', false);
 
     %% Close the text file.
     fclose(fileID);
@@ -39,8 +51,11 @@ for z = 1:1:amount;
         raw(1:length(dataArray{col}),col) = dataArray{col};
     end
     numericData = NaN(size(dataArray{1},1),size(dataArray,2));
+    
+    %Get length of files being imported and store them.
+    lengthOfFile(t_r,1) = size(raw,1);
 
-    for col = 1:1:length(names)
+    for col = 1:1:length(t_names)
         % Converts strings in the input cell array to numbers. Replaced non-numeric
         % strings with NaN.
         rawData = dataArray{col};
@@ -79,9 +94,6 @@ for z = 1:1:amount;
 
     %% Allocate imported array to column variable names
     for i = 1:1:length(rawData)
-        %for j = 1:1:length(names)
-        %    eval(sprintf('%s(length(%s)+1,:) = cell2mat(raw(i, j));',names{j},names{j}));
-
         NormTime(length(NormTime)+1,:) = cell2mat(raw(i, 1));
         run(length(run)+1,:) = cell2mat(raw(i, 2));
         sg1(length(sg1)+1,:) = cell2mat(raw(i, 3));
@@ -137,20 +149,95 @@ for z = 1:1:amount;
         LP1(length(LP1)+1,:) = cell2mat(raw(i, 53));
         LP3(length(LP3)+1,:) = cell2mat(raw(i, 54));
         LP2(length(LP2)+1,:) = cell2mat(raw(i, 55));
-        LP4(length(LP4)+1,:) = cell2mat(raw(i, 56));;
-
-        %end
+        LP4(length(LP4)+1,:) = cell2mat(raw(i, 56));
     end
-    complete = (z/amount)*100
+    
+    %Determine column ranges to save data to
+    if t_r == 1
+        saveRanges(t_r,:) = [1 lengthOfFile(1)];
+    else
+        prev = saveRanges(t_r-1,2);
+        saveRanges(t_r,:) = [(prev+1) prev+lengthOfFile(t_r)];
+    end
+    
+    %Open 
+   % m = matfile(t_saveFileAs, 'Writable', true);
+    
+    m.NormTime(saveRanges(t_r,1):saveRanges(t_r,2),1) = NormTime;
+    m.run(saveRanges(t_r,1):saveRanges(t_r,2),2) = run;
+    m.sg1(saveRanges(t_r,1):saveRanges(t_r,2),3) = sg1;
+    m.sg2(saveRanges(t_r,1):saveRanges(t_r,2),4) = sg2;
+    m.sg3(saveRanges(t_r,1):saveRanges(t_r,2),5) = sg3;
+    m.sg4(saveRanges(t_r,1):saveRanges(t_r,2),6) = sg4;
+    m.sg5(saveRanges(t_r,1):saveRanges(t_r,2),7) = sg5;
+    m.sg6(saveRanges(t_r,1):saveRanges(t_r,2),8) = sg6;
+    m.sg7(saveRanges(t_r,1):saveRanges(t_r,2),9) = sg7;
+    m.sg8(saveRanges(t_r,1):saveRanges(t_r,2),10) = sg8;
+    m.sg9(saveRanges(t_r,1):saveRanges(t_r,2),11) = sg9;
+    m.sg10(saveRanges(t_r,1):saveRanges(t_r,2),12) = sg10;
+    m.sg11(saveRanges(t_r,1):saveRanges(t_r,2),13) = sg11;
+    m.sg12(saveRanges(t_r,1):saveRanges(t_r,2),14) = sg12;
+    m.sg13(saveRanges(t_r,1):saveRanges(t_r,2),15) = sg13;
+    m.sg14(saveRanges(t_r,1):saveRanges(t_r,2),16) = sg14;
+    m.sg15(saveRanges(t_r,1):saveRanges(t_r,2),17) = sg15;
+    m.sg16(saveRanges(t_r,1):saveRanges(t_r,2),18) = sg16;
+    m.sg17(saveRanges(t_r,1):saveRanges(t_r,2),19) = sg17;
+    m.sg18(saveRanges(t_r,1):saveRanges(t_r,2),20) = sg18;
+    m.sg19(saveRanges(t_r,1):saveRanges(t_r,2),21) = sg19;
+    m.sg20(saveRanges(t_r,1):saveRanges(t_r,2),22) = sg20;
+    m.sg21(saveRanges(t_r,1):saveRanges(t_r,2),23) = sg21;
+    m.sg22(saveRanges(t_r,1):saveRanges(t_r,2),24) = sg22;
+    m.wp11(saveRanges(t_r,1):saveRanges(t_r,2),25) = wp11;
+    m.wp12(saveRanges(t_r,1):saveRanges(t_r,2),26) = wp12;
+    m.wp21(saveRanges(t_r,1):saveRanges(t_r,2),27) = wp21;
+    m.wp22(saveRanges(t_r,1):saveRanges(t_r,2),28) = wp22;
+    m.wp31(saveRanges(t_r,1):saveRanges(t_r,2),29) = wp31;
+    m.wp32(saveRanges(t_r,1):saveRanges(t_r,2),30) = wp32;
+    m.wp41(saveRanges(t_r,1):saveRanges(t_r,2),31) = wp41;
+    m.wp42(saveRanges(t_r,1):saveRanges(t_r,2),32) = wp42;
+    m.wp51(saveRanges(t_r,1):saveRanges(t_r,2),33) = wp51;
+    m.sgBolt(saveRanges(t_r,1):saveRanges(t_r,2),34) = sgBolt;
+    m.wp61(saveRanges(t_r,1):saveRanges(t_r,2),35) = wp61;
+    m.wp62(saveRanges(t_r,1):saveRanges(t_r,2),36) = wp62;
+    m.wp71(saveRanges(t_r,1):saveRanges(t_r,2),37) = wp71;
+    m.wp72(saveRanges(t_r,1):saveRanges(t_r,2),38) = wp72;
+    m.LC1(saveRanges(t_r,1):saveRanges(t_r,2),39) = LC1;
+    m.LC2(saveRanges(t_r,1):saveRanges(t_r,2),40) = LC2;
+    m.LC3(saveRanges(t_r,1):saveRanges(t_r,2),41) = LC3;
+    m.LC4(saveRanges(t_r,1):saveRanges(t_r,2),42) = LC4;
+    m.MTSLC(saveRanges(t_r,1):saveRanges(t_r,2),43) = MTSLC;
+    m.MTSLVDT(saveRanges(t_r,1):saveRanges(t_r,2),44) = MTSLVDT;
+    m.A(saveRanges(t_r,1):saveRanges(t_r,2),45) = A;
+    m.B(saveRanges(t_r,1):saveRanges(t_r,2),46) = B;
+    m.C(saveRanges(t_r,1):saveRanges(t_r,2),47) = C;
+    m.D(saveRanges(t_r,1):saveRanges(t_r,2),48) = D;
+    m.E(saveRanges(t_r,1):saveRanges(t_r,2),49) = E;
+    m.F(saveRanges(t_r,1):saveRanges(t_r,2),50) = F;
+    m.G(saveRanges(t_r,1):saveRanges(t_r,2),51) = G;
+    m.H(saveRanges(t_r,1):saveRanges(t_r,2),52) = H;
+    m.LP1(saveRanges(t_r,1):saveRanges(t_r,2),53) = LP1;
+    m.LP3(saveRanges(t_r,1):saveRanges(t_r,2),54) = LP3;
+    m.LP2(saveRanges(t_r,1):saveRanges(t_r,2),55) = LP2;
+    m.LP4(saveRanges(t_r,1):saveRanges(t_r,2),56) = LP4;
+    
+    %Determine save range
+    t_complete = (t_r/t_amount)*100
+    toc
+    %save(sprintf('%s%d',t_saveFileAs, t_r), '-regexp', '^(?!t_.*$).')
+    %save(t_saveFileAs2, '-regexp', '^(?!t_.*$).')
+    clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y j textFileName timeModifier NormTime run sg1 sg2 sg3 sg4 sg5 sg6 sg7 sg8 sg9 sg10 sg11 sg12 sg13 sg14 sg15 sg16 sg17 sg18 sg19 sg20 sg21 sg22 wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 sgBolt wp61 wp62 wp71 wp72 LC1 LC2 LC3 LC4 MTSLC MTSLVDT A B C D E F G H LP1 LP3 LP2 LP4;
 end
-
+   tic
 %Correct Time
-timeModifier = NormTime(2,1) - NormTime(1,1);
+NormTime = m.NormTime;
+timeModifier = m.NormTime(2,1) - NormTime(1,1);
 for x = 2:1:length(NormTime)
     NormTime(x,1) = NormTime((x-1),1)+timeModifier;
 end
-%% Clear temporary variables
-clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y z j complete textFileName timeModifier;
+m.NormTime = NormTime;
 
-save(t_saveFileAs, '-regexp', '^(?!t_.*$).')
-save(t_saveFileAs2, '-regexp', '^(?!t_.*$).')
+clearvars -except t_saveFileAs2
+
+load(sprintf('%s.mat',t_saveFileAs2));
+save(t_saveFileAs2, '-v7.3', '-regexp', '^(?!t_.*$).');
+toc
