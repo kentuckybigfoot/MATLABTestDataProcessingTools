@@ -409,9 +409,13 @@ if ProcessBeamRotation == true
     pointsA = [[mean(x3Glo(:,1)); mean(y3Glo(:,1))] [mean(x3Glo(:,2)); mean(y3Glo(:,2))] [mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]]; 
     %pointsA2 = [[mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]];
     
+    %To prevent broadcast variables and increase speed
+    x1 = x3Glo(:,1); x2 = x3Glo(:,2); x3 = x3Glo(:,3); x4 = x3Glo(:,4);
+    y1 = y3Glo(:,1); y2 = y3Glo(:,2); y3 = y3Glo(:,3); y4 = y3Glo(:,4);
+    
     parfor r = 1:1:size(wp,1);
         %Current Position
-        pointsB = [[x3Glo(r,1); y3Glo(r,1)] [x3Glo(r,2); y3Glo(r,2)] [x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
+        pointsB = [[x1(r); y1(r)] [x2(r); y2(r)] [x3(r); y3(r)] [x4(r); y4(r)]];
         %pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
         
         rotInfo(r) = [absor(pointsA, pointsB)];
