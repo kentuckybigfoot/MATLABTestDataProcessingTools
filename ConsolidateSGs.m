@@ -36,14 +36,16 @@ function [ sg ] = ConsolidateSGs( ShearTab, filename )
         sg(:,5) = sg18(:,1);
     end
     
+    endSize = size(sg,2);
+    
     %Bolt strain gauge
-    sg(:,size(sg,2)+1) = sgBolt(:,1);
+    sg(:,endSize+1) = sgBolt(:,1);
     
     %Inner column strain gauges
-    sg(:,size(sg,2)+1) = sg19(:,1);
-    sg(:,size(sg,2)+1) = sg20(:,1);
-    sg(:,size(sg,2)+1) = sg21(:,1);
-    sg(:,size(sg,2)+1) = sg22(:,1);
+    sg(:,endSize+2) = sg19(:,1);
+    sg(:,endSize+3) = sg20(:,1);
+    sg(:,endSize+4) = sg21(:,1);
+    sg(:,endSize+5) = sg22(:,1);
 
 end
 
