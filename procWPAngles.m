@@ -1,38 +1,46 @@
-function [  wpAngles,  wpAnglesDeg ] = procWPAngles( wp )
-%UNTITLED4 Summary of this function goes here
-%   Detailed explanation goes here
+function [ wpAngles, wpAnglesDeg ] = procWPAngles( wp, dist )
+%procWPAngles Determines angles of triangles made by wirepots
+%   Input the wirepot aray and a distance array to have an a nx2 array out
+%   put containing the angles of the wire pot groups in radians and then
+%   degrees, respectively. Order or angles is alpha, beta, gamma and
+%   repeats for every triangle (i. e. A, B, G, A, B, G).
+%
+%   Note that name of wirepot is the grouping followed by the wirepot's
+%   number in the group from right to left w/ the cylinder pointed upward.
+%   
+%   Old note: For ST1, wirepot 3 sat at the bottom of the beam and was
+%   turned upside due to clearance requiring an inversion of naming here.
 
-for i = 1:1:size(wp,1)
-    %Wirepot Set 1
-    wp1cDist = 4;                                                                            %Dist b/t WPs CTC.
-    wp1Angles(i,1) = acos((wp(i,2)^2 - wp(i,1)^2 - wp1cDist^2)/(-2*wp(i,1)*wp1cDist));       %Alpha
-    wp1Angles(i,2) = acos((wp(i,1)^2 - wp(i,2)^2 - wp1cDist^2)/(-2*wp(i,2)*wp1cDist));       %Beta
-    wp1Angles(i,3) = acos((wp1cDist^2 - wp(i,2)^2 - wp(i,1)^2)/(-2*wp(i,2)*wp(i,1)));        %Gamma
-    
-    %Wirepot Set 2
-    wp2cDist = 4;                                                                            %Dist b/t WPs CTC.
-    wp2Angles(i,1) = acos((wp(i,4)^2 - wp(i,3)^2 - wp2cDist^2)/(-2*wp(i,3)*wp2cDist));       %Alpha
-    wp2Angles(i,2) = acos((wp(i,3)^2 - wp(i,4)^2 - wp2cDist^2)/(-2*wp(i,4)*wp2cDist));       %Beta
-    wp2Angles(i,3) = acos((wp2cDist^2 - wp(i,4)^2 - wp(i,3)^2)/(-2*wp(i,4)*wp(i,3)));        %Gamma
-    
-    %Wirepot Set 3
-    %Note that name of wirepots is the grouping followed by the wirepot's
-    %number in the group from right to left with the cylinder pointed upward.
-    %For ST1, wirepot 3 sat at the bottom of the beam and was turned upside
-    %due to clearance requiring an inversion of naming here.
-    wp3cDist = 4;                                                                            %Dist b/t WPs CTC.
-    wp3Angles(i,1) = acos((wp(i,5)^2 - wp(i,6)^2 - wp3cDist^2)/(-2*wp(i,6)*wp3cDist));       %Alpha
-    wp3Angles(i,2) = acos((wp(i,6)^2 - wp(i,5)^2 - wp3cDist^2)/(-2*wp(i,5)*wp3cDist));       %Beta
-    wp3Angles(i,3) = acos((wp3cDist^2 - wp(i,5)^2 - wp(i,6)^2)/(-2*wp(i,5)*wp(i,6)));        %Gamma
-    
-    %Wirepot Set 4
-    %Same change as wirepot set 3.
-    wp4cDist = 4;                                                                            %Dist b/t WPs CTC.
-    wp4Angles(i,1) = acos((wp(i,7)^2 - wp(i,8)^2 - wp4cDist^2)/(-2*wp(i,8)*wp4cDist));       %Alpha
-    wp4Angles(i,2) = acos((wp(i,8)^2 - wp(i,7)^2 - wp4cDist^2)/(-2*wp(i,7)*wp4cDist));       %Beta
-    wp4Angles(i,3) = acos((wp4cDist^2 - wp(i,7)^2 - wp(i,8)^2)/(-2*wp(i,7)*wp(i,8)));        %Gamma
-    
+sizeOfWP = size(wp,1);
+dist = repmat(dist, sizeOfWP, 1);
+
+%Wirepot Set 1
+[wp1Angles1(:,1), wp1Angles2(:,1), wp1Angles3(:,1)] = lawOfCos([wp(:,7) wp(:,1) dist(:,1)]);
+
+%Wirepot Set 2
+[wp2Angles1(:,1), wp2Angles2(:,1), wp2Angles3(:,1)] = lawOfCos([wp(:,2) wp(:,8) dist(:,2)]);
+
+%Wirepot Set 3
+[wp3Angles1(:,1), wp3Angles2(:,1), wp3Angles3(:,1)] = lawOfCos([wp(:,6) wp(:,5) dist(:,3)]);
+
+%Wirepot Set 4
+if dist(:,4) ~= 0
+    [wp4Angles1(:,1), wp4Angles2(:,1), wp4Angles3(:,1)] = lawOfCos([wp(:,9) wp(:,14) dist(:,4)]);
+else
+    wp4Angles1(:,1) = zeros(sizeOfWP,1);
+    wp4Angles2(:,1) = wp4Angles1(:,1);
+    wp4Angles3(:,1) = wp4Angles1(:,1);
 end
 
-    wpAngles(:,:) = [wp1Angles(:,1) wp1Angles(:,2) wp1Angles(:,3) wp2Angles(:,1) wp2Angles(:,2) wp2Angles(:,3) wp3Angles(:,1) wp3Angles(:,2) wp3Angles(:,3) wp4Angles(:,1) wp4Angles(:,2) wp4Angles(:,3)];
-    wpAnglesDeg(:,:) = (180/pi)*[wp1Angles(:,1) wp1Angles(:,2) wp1Angles(:,3) wp2Angles(:,1) wp2Angles(:,2) wp2Angles(:,3) wp3Angles(:,1) wp3Angles(:,2) wp3Angles(:,3) wp4Angles(:,1) wp4Angles(:,2) wp4Angles(:,3)];
+%Wirepot Set 5 (Bottom group 1)
+%Same concept as wirepot set 1
+[wp5Angles1(:,1), wp5Angles2(:,1), wp5Angles3(:,1)] = lawOfCos([wp(:,3) wp(:,12) dist(:,5)]);
+
+%Wirepot Set 6 (Bottom group 1)
+%Same concept as wirepot set 2
+[wp6Angles1(:,1), wp6Angles2(:,1), wp6Angles3(:,1)] = lawOfCos([wp(:,13) wp(:,4) dist(:,6)]);
+
+wpAngles(:,:)    = cat(2, wp1Angles1(:,1), wp1Angles2(:,1), wp1Angles3(:,1), wp2Angles1(:,1), wp2Angles2(:,1), wp2Angles3(:,1), wp3Angles1(:,1), wp3Angles2(:,1), wp3Angles3(:,1), wp4Angles1(:,1), wp4Angles2(:,1), wp4Angles3(:,1), wp5Angles1(:,1), wp5Angles2(:,1), wp5Angles3(:,1),  wp6Angles1(:,1), wp6Angles2(:,1), wp6Angles3(:,1));
+wpAnglesDeg(:,:) = (180/pi).*wpAngles;
+end
+
