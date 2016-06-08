@@ -11,19 +11,19 @@ global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
 ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-20-16';
-ProcessFileName              = 'FS Testing - ST2 - Test 2 - 05-20-16';
-ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 05-20-16';
-ProcessCodeName              = 'FST-ST2-May20-2';
+ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-20-16';
+ProcessRealName              = 'Full Scale Test 1 - ST2 Only - 05-20-16';
+ProcessCodeName              = 'FST-ST2-May20-1';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
-localAppend                  = false;
-ProcessConsolidateSGs        = false;
-ProcessConsolidateWPs        = false;
-ProcessConsolidateLPs        = false;
-ProcessConsolidateLCs        = false;
-ProcessWPAngles              = false;
+localAppend                  = true;
+ProcessConsolidateSGs        = true;
+ProcessConsolidateWPs        = true;
+ProcessConsolidateLPs        = true;
+ProcessConsolidateLCs        = true;
+ProcessWPAngles              = true;
 ProcessWPCoords              = true;
-ProcessWPHeights             = true;
+ProcessWPHeights             = false;
 processWPHeighDistances      = false;
 ProcessLPs                   = true;
 processIMU                   = false;
@@ -186,7 +186,7 @@ if ProcessWPAngles == true
     c5 = find(round(wpAngles(:,13) + wpAngles(:,14) + wpAngles(:,15),12) ~= round(pi,12));
     c6 = find(round(wpAngles(:,16) + wpAngles(:,17) + wpAngles(:,18),12) ~= round(pi,12));
     
-    if all(c1, c2, c3, c5, c6) == 0
+    if all([c1, c2, c3, c5, c6]) == 0
         error('Check angles for accuracy. Unable to verify all angles equal pi');
     end
 
@@ -441,9 +441,15 @@ if ProcessBeamRotation == true
     beamRotation(row1,13) = beamRotation(row1,13) - 360;
     %beamRotation(row2,14) = beamRotation(row2,14) - 360;
     
-    %Top 1, top 2, bot 1, bot 3
-    initialHWPs = [wp(1,7) wp(1,8) wp(1,3) wp(1,4)];
-    initialHLPs = [lp(1,1) lp(1,2) lp(1,3) lp(1,4)];
+    
+    if ProcessShearTab == 2 || ProcessShearTab == 4
+        %h1WP = 5.525; %Width of flange in inches
+        h1WP = 15 + (5/8); %Distance between wirepot strings
+        h1LP = 14.5;
+    else
+        h1WP = 5.025; %Width of flange in inches
+        h1LP = 0;
+    end
     
     dx11 = x3Glo(:,1) - mean(x3Glo(:,1));
     dx12 = x3Glo(:,3) - mean(x3Glo(:,3));
@@ -453,17 +459,7 @@ if ProcessBeamRotation == true
     dx22 = x3Glo(:,4) - mean(x3Glo(:,4));
     dx2  = (dx21 + dx22)./2;
     
-    dx111 = x3Glo(:,1) - mean(x3Glo(:,1));
-    dx121 = x3Glo(:,3) - mean(x3Glo(:,3));
-    
-    dx211 = x3Glo(:,2) - mean(x3Glo(:,2));
-    dx221 = x3Glo(:,4) - mean(x3Glo(:,4));
-    
-    dx1b  = (dx111 + dx211)./2;
-    dx2b  = (dx121 + dx221)./2;
-    
-    beamRotation(:,18) = (dx1b + dx2b)./5.525;
-    
+    beamRotation(:,17) = (dx1 + dx2)./h1WP;
     
     lpdx11 = lp(:,1) - mean(lp(:,1));
     lpdx21 = lp(:,3) - mean(lp(:,3));
@@ -473,21 +469,8 @@ if ProcessBeamRotation == true
     lpdx22 = lp(:,4) - mean(lp(:,4));
     lpdx2 = (lpdx12 + lpdx22)./2;
     
-    beamRotation(:,19) = (lpdx1 + lpdx2)./14.5;
-    
-    if ProcessShearTab == 2 || ProcessShearTab == 4
-        %h1WP = 5.525; %Width of flange in inches
-        h1WP = 15 + (5/8); %Distance between wirepot strings
-    else
-        h1WP = 5.025; %Width of flange in inches
-    end
-    
-    beamRotation(:,15) = (dx11 + dx12)./h1WP;
-    beamRotation(:,16) = (dx21 + dx22)./h1WP;
-    
-    beamRotation(:,17) = (dx1 + dx2)./h1WP;
-    
-    
+    beamRotation(:,18) = (lpdx1 + lpdx2)./h1LP;
+
     clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
     if localAppend == true
