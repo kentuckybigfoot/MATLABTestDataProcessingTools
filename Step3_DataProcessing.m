@@ -1,5 +1,5 @@
 clc
-%close all
+close all
 clear
 
 format long;
@@ -10,26 +10,25 @@ global ProcessFileName %So we can pick this up in function calls
 global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
-ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-09-16';
-ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-09-16';
-ProcessRealName              = 'Full Scale Test 4 - ST2 Only - 05-09-16';
-ProcessCodeName              = 'FST-ST2-May09-4';
+ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-20-16';
+ProcessFileName              = 'FS Testing - ST2 - Test 2 - 05-20-16';
+ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 05-20-16';
+ProcessCodeName              = 'FST-ST2-May20-2';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
-localAppend                  = true;
-ProcessConsolidateSGs        = true;
-ProcessConsolidateWPs        = true;
-ProcessConsolidateLPs        = true;
-ProcessConsolidateLCs        = true;
-ProcessWPAngles              = true;
-ProcessWPCoords              = false;
+localAppend                  = false;
+ProcessConsolidateSGs        = false;
+ProcessConsolidateWPs        = false;
+ProcessConsolidateLPs        = false;
+ProcessConsolidateLCs        = false;
+ProcessWPAngles              = false;
+ProcessWPCoords              = true;
 ProcessWPHeights             = true;
 processWPHeighDistances      = false;
-processWPCoordinates         = false;
 ProcessLPs                   = true;
 processIMU                   = false;
 ProcessBeamRotation          = true;
-ProcessStrainProfiles        = true;
+ProcessStrainProfiles        = false;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
 ProcessMoments               = true;
@@ -108,6 +107,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CONSOLIDATE WIRE POTENTIOMETER VARIABLES INTO SINGLE ARAY                %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Slightly faster to use cat() but this provides me with a name chart.
 if ProcessConsolidateWPs == true
     wp(:,1)  = wp11(:,1);
     wp(:,2)  = wp12(:,1);
@@ -176,56 +176,32 @@ end
 %CALCULATE EACH ANGLE OF WIRE POTENTIOMETER TRIANGLES                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ProcessWPAngles == true
-    wpAnglesPass = [true true true true];
     
-    disp('Processing angles');
-    if runParallel == true
-        [wpAngles, wpAnglesDeg] = procWPAnglesPar(wp(:,:), [D1, D2, D3, D4, D5, D6]);
-    else
-        [wpAngles, wpAnglesDeg] = procWPAngles(wp);
-    end
+    [wpAngles, wpAnglesDeg] = procWPAngles(wp(:,:), [D1, D2, D3, D4, D5, D6]);
     
-    disp('Processing angles complete. Validating angles.')
+    c1 = find(round(wpAngles(:,1) + wpAngles(:,2) + wpAngles(:,3),12) ~= round(pi,12));
+    c2 = find(round(wpAngles(:,4) + wpAngles(:,5) + wpAngles(:,6),12) ~= round(pi,12));
+    c3 = find(round(wpAngles(:,7) + wpAngles(:,8) + wpAngles(:,9),12) ~= round(pi,12));
+    c4 = find(round(wpAngles(:,10) + wpAngles(:,11) + wpAngles(:,12),12) ~= round(pi,12));
+    c5 = find(round(wpAngles(:,13) + wpAngles(:,14) + wpAngles(:,15),12) ~= round(pi,12));
+    c6 = find(round(wpAngles(:,16) + wpAngles(:,17) + wpAngles(:,18),12) ~= round(pi,12));
     
-    for i = 1:1:length(wp)
-        if round(wpAngles(i,1) + wpAngles(i,2) + wpAngles(i,3),4) ~= round(pi,4)
-            wpAnglesPass(1,1) = false;
-            break;
-        end
-        if round(wpAngles(i,4) + wpAngles(i,5) + wpAngles(i,6),4) ~= round(pi,4)
-            wpAnglesPass(1,2) = false;
-            break;
-        end
-        if round(wpAngles(i,7) + wpAngles(i,8) + wpAngles(i,9),4) ~= round(pi,4)
-            wpAnglesPass(1,3) = false;
-            break;
-        end
-        if round(wpAngles(i,10) + wpAngles(i,11) + wpAngles(i,12),4) ~= round(pi,4)
-            wpAnglesPass(1,4) = false;
-            break;
-        end
+    if all(c1, c2, c3, c5, c6) == 0
+        error('Check angles for accuracy. Unable to verify all angles equal pi');
     end
 
-    if any(wpAnglesPass == 0)
-        disp('Error determining WP Angles with non offset data.')
-    else
-        disp('Angles using non offset data calculated successfully. Appending to file (if localAppend = true) and removing garbage.')
-        clearvars wp1Angles wp2Angles wp3Angles wp4Angles wp1cDist wp2cDist wp3cDist wp4cDist wpAnglesPass
-        if localAppend == true
-            save(ProcessFileName, 'wpAngles', 'wpAnglesDeg', '-append');
-        end
+    disp('Angles using non offset data calculated successfully. Appending to file (if localAppend = true) and removing garbage.')
+    clearvars c1 c2 c3 c4 c5 c6
+    
+    if localAppend == true
+        save(ProcessFileName, 'wpAngles', 'wpAnglesDeg', '-append');
+        disp('Angles appended successfully.');
     end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE HEIGHT OF WIRE POT TRIANGLES                                   %
+%CALCULATE COORDINATES OF WIREPOT STRINGS                                 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Use Heron's Formula to determine the area of the triangle made by the
-%wirepots and then backsolve formula for area of triangle to get triangle
-%height. This can be backsolved
-%to calculate d which is the distance from vertex A to line h with line h
-%being the line perpendicular to line c and extending to vertex C. See
-%derivation sheet.
 if ProcessWPCoords == true
     %Get (x3,y3) coords of vertex C of wire pot triangles
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -304,18 +280,18 @@ if ProcessLPs == true
     %p4 = [-0.00271303197038322,-0.0265050717127049,-0.0860876554573797,-0.0693793958492654,0.162275673684280,0.324824621310463,0.204426859405091,0.347725190280539,5.34467391561030];
     p4 = [-8.14898838897599e-20;2.31385242074387e-15;-2.53901613238266e-11;1.16383850495194e-07;5.34327273544657e-05;-3.04408237969401;14004.5257169421;-28235882.0040511;22265113361.3903];
     lpValues4(:,end+1) = abs(offset(polyval(p4, lp(:,4))));
-    lpValues1(:,end+1) = mean(abs(lpValues1),2);
-    lpValues2(:,end+1) = mean(abs(lpValues2),2);
-    lpValues3(:,end+1) = mean(abs(lpValues3),2);
-    lpValues4(:,end+1) = mean(abs(lpValues4),2);
+    lpValues1(:,end+1) = mean(lpValues1,2);
+    lpValues2(:,end+1) = mean(lpValues2,2);
+    lpValues3(:,end+1) = mean(lpValues3,2);
+    lpValues4(:,end+1) = mean(lpValues4,2);
     
     lp(:,1) = lpValues1(:,end);
-    lp(:,2) = lpValues1(:,end);
-    lp(:,3) = lpValues1(:,end);
-    lp(:,4) = lpValues1(:,end);
+    lp(:,2) = lpValues2(:,end);
+    lp(:,3) = lpValues3(:,end);
+    lp(:,4) = lpValues4(:,end);
     lp(:,5) = (offset(lpValues1(:, end)) + offset(lpValues3(:,end)))/2;
     lp(:,6) = (offset(lpValues2(:, end)) + offset(lpValues4(:,end)))/2;
-
+    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -386,7 +362,7 @@ if ProcessBeamRotation == true
     beamRotation(:,5) = wpAngles(:, 17) - beamInitialAngle6;
     
     %Current slope of the triangle median for the top of the beam,
-    %bottom of the beam, and pivot rod, bottom group 1 and bottom
+    %top of the beam, and pivot rod, bottom group 1 and bottom
     %group 2, respectively.
     m21 = (wp(:,7).*sin(wpAngles(:,2)) - 0)./(wp(:,7).*cos(wpAngles(:,2)) - D1/2);
     m22 = (wp(:,2).*sin(wpAngles(:,5)) - 0)./(wp(:,2).*cos(wpAngles(:,5)) - D2/2);
@@ -395,7 +371,7 @@ if ProcessBeamRotation == true
     m26 = (wp(:,13).*sin(wpAngles(:,17)) - 0)./(wp(:,13).*cos(wpAngles(:,17)) - D6/2);
     
     %Calculate the angle between the initial and current median for the
-    %top of the beam, bottom of the beam, and pivot rod, bottom group 1
+    %top of the beam, top of the beam, and pivot rod, bottom group 1
     %and bottom group 2, respectively.
     beamRotation(:,6)  = atan2((m21 - m11),(1 + m11*m21));
     beamRotation(:,7)  = atan2((m22 - m12),(1 + m12*m22));
@@ -430,16 +406,16 @@ if ProcessBeamRotation == true
     %http://www.mathworks.com/matlabcentral/fileexchange/26186-absolute-orientation-horn-s-method
     
     %Init posistion
-    pointsA = [[x3Glo(1,1); y3Glo(1,1)] [x3Glo(1,2); y3Glo(1,2)]]; 
-    pointsA2 = [[x3Glo(1,3); y3Glo(1,3)] [x3Glo(1,4); y3Glo(1,4)]];
+    pointsA = [[mean(x3Glo(:,1)); mean(y3Glo(:,1))] [mean(x3Glo(:,2)); mean(y3Glo(:,2))] [mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]]; 
+    %pointsA2 = [[mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]];
     
-    for r = 1:1:size(wp,1);
+    parfor r = 1:1:size(wp,1);
         %Current Position
-        pointsB = [[x3Glo(r,1); y3Glo(r,1)] [x3Glo(r,2); y3Glo(r,2)]];
-        pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
+        pointsB = [[x3Glo(r,1); y3Glo(r,1)] [x3Glo(r,2); y3Glo(r,2)] [x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
+        %pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
         
-        rotInfo(r) = absor(pointsA, pointsB);
-        rotInfo2(r) = absor(pointsA2, pointsB2);
+        rotInfo(r) = [absor(pointsA, pointsB)];
+        %rotInfo2(r) = [absor(pointsA2, pointsB2)];
         
         %With the translation and rotation matrix from absor() we know that
         %COR=R*x + t describes the center of rotation if we find a point on
@@ -450,17 +426,63 @@ if ProcessBeamRotation == true
     end 
     
     tempVar = [rotInfo(:).theta].';
-    tempVar2 = [rotInfo2(:).theta].';
+    %tempVar2 = [rotInfo2(:).theta].';
     
     [row1, col1] = find(tempVar > 1);
-    [row2, col2] = find(tempVar2 > 1);
+    %[row2, col2] = find(tempVar2 > 1);
     
     beamRotation(:,13) = tempVar;
-    beamRotation(:,14) = tempVar2;
+    %beamRotation(:,14) = tempVar2;
     
     beamRotation(row1,13) = beamRotation(row1,13) - 360;
-    beamRotation(row2,14) = beamRotation(row2,14) - 360;
-
+    %beamRotation(row2,14) = beamRotation(row2,14) - 360;
+    
+    %Top 1, top 2, bot 1, bot 3
+    initialHWPs = [wp(1,7) wp(1,8) wp(1,3) wp(1,4)];
+    initialHLPs = [lp(1,1) lp(1,2) lp(1,3) lp(1,4)];
+    
+    dx11 = x3Glo(:,1) - mean(x3Glo(:,1));
+    dx12 = x3Glo(:,3) - mean(x3Glo(:,3));
+    dx1  = (dx11 + dx12)./2;
+    
+    dx21 = x3Glo(:,2) - mean(x3Glo(:,2));
+    dx22 = x3Glo(:,4) - mean(x3Glo(:,4));
+    dx2  = (dx21 + dx22)./2;
+    
+    dx111 = x3Glo(:,1) - mean(x3Glo(:,1));
+    dx121 = x3Glo(:,3) - mean(x3Glo(:,3));
+    
+    dx211 = x3Glo(:,2) - mean(x3Glo(:,2));
+    dx221 = x3Glo(:,4) - mean(x3Glo(:,4));
+    
+    dx1b  = (dx111 + dx211)./2;
+    dx2b  = (dx121 + dx221)./2;
+    
+    beamRotation(:,18) = (dx1b + dx2b)./5.525;
+    
+    
+    lpdx11 = lp(:,1) - mean(lp(:,1));
+    lpdx21 = lp(:,3) - mean(lp(:,3));
+    lpdx1 = (lpdx11 + lpdx21)./2;
+    
+    lpdx12 = lp(:,2) - mean(lp(:,2));
+    lpdx22 = lp(:,4) - mean(lp(:,4));
+    lpdx2 = (lpdx12 + lpdx22)./2;
+    
+    beamRotation(:,19) = (lpdx1 + lpdx2)./14.5;
+    
+    if ProcessShearTab == 2 || ProcessShearTab == 4
+        %h1WP = 5.525; %Width of flange in inches
+        h1WP = 15 + (5/8); %Distance between wirepot strings
+    else
+        h1WP = 5.025; %Width of flange in inches
+    end
+    
+    beamRotation(:,15) = (dx11 + dx12)./h1WP;
+    beamRotation(:,16) = (dx21 + dx22)./h1WP;
+    
+    beamRotation(:,17) = (dx1 + dx2)./h1WP;
+    
     
     clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
@@ -740,19 +762,38 @@ scatter3(NormTime, repmat(xLocation(3,2),57046,1), (10^-6)*offset(sg(:,3)))
 scatter3(NormTime, repmat(xLocation(4,2),57046,1), (10^-6)*offset(sg(:,4)))
 %}
 if ProcessOutputPlots == true
-    r1 = 2000;
+    r1 = 1;
     r2 = length(sg);
     %Check if folder to save these in exists and create folder if it doesnt
-    if exist(fullfile('..\',ProcessCodeName)) == 0
-        mkdir('..\',ProcessCodeName);
+    fullPathName = fullfile(ProcessFilePath,ProcessCodeName);
+    if exist(fullPathName,'dir') == 0
+        mkdir(ProcessFilePath,ProcessCodeName);
     end
     
+    %Put SVG and PNG files into seperate folders to help with clutter
+    if exist(fullfile(fullPathName,'SVG'),'dir') == 0
+        mkdir(fullPathName,'SVG');
+    end
+    
+    if exist(fullfile(fullPathName,'PNG'),'dir') == 0
+        mkdir(fullPathName,'PNG');
+    end
+    
+    %Confirm that all of the folders exist
+    if any([exist(fullPathName,'dir'), ...
+       exist(fullfile(fullPathName,'SVG'),'dir'), ...
+       exist(fullfile(fullPathName,'PNG'),'dir')]) == 0 ...
+        error('Can not create plots due inability to create directories.');
+    end
+        
     %Strain gauge array positions change depending on shear tab. this
     %assures that the correct column strain gauges are plotted as desired.
     if ProcessShearTab == '2' || ProcessShearTab == '4'
         plotArrayCol = [offset(sg(r1:r2,7)) offset(sg(r1:r2,8)) offset(sg(r1:r2,9)) offset(sg(r1:r2,10))];
+        strainBolt   = sg(r1:r2,5);
     else
         plotArrayCol = [offset(sg(r1:r2,6)) offset(sg(r1:r2,7)) offset(sg(r1:r2,8)) offset(sg(r1:r2,9))];
+        strainBolt   = sg(r1:r2,4);
     end
 
     %%%% Strain Gauges %%%%
@@ -760,6 +801,10 @@ if ProcessOutputPlots == true
     smartPlot(NormTime(r1:r2), [sg(r1:r2,1) sg(r1:r2,2) sg(r1:r2,3) sg(r1:r2,4)], ...
         'Strain Gauge Data on Shear Tab', 'Time (sec)', 'Strain (uStrain)', ...
         'legend', {'SG1','SG2','SG3','SG4'}, 'visible', 'grid', 'save', 'sg-st');
+    
+    smartPlot(NormTime(r1:r2), strainBolt, ...
+        'Strain Gauge Instrumented Bolt', 'Time (sec)', 'Strain (uStrain)', ...
+        'visible', 'grid', 'save', 'sg-bolt');
     
     smartPlot(NormTime(r1:r2), [offset(sg(r1:r2,1)) offset(sg(r1:r2,2)) offset(sg(r1:r2,3)) offset(sg(r1:r2,4))], ...
         'Offset Strain Gauge Data on Shear Tab', 'Time (sec)', 'Strain (uStrain)', ...
@@ -793,31 +838,103 @@ if ProcessOutputPlots == true
     
     %%%% Angles %%%%
     disp('Plotting rotation data');
-    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,1), 'WP Group 1 Rotation (Method 1)', ...
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,1), 'WP Group 1 Top Rotation (Init. Angles)', ...
         'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
-        'rotation-g1-method1-offset');
+        'rotation-1g11-offset');
     
-    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,2), 'WP Group 2 Rotation (Method 1)', ...
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,5), 'WP Group 1 Bot Rotation (Init. Angles)', ...
         'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
-        'rotation-g2-method1-offset');
+        'rotation-1g12-offset');
     
-    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,1) beamRotation(r1:r2,2)], ...
-        'WP Group 1 & 2 Rotation (Method 1)', 'Time (sec)', ...
-        'Rotation (rad)', 'grid', 'legend', {'G1 (Top)', 'G2 (Bottom)'}, ...
-        'visible', 'save', 'rotation-g12-method1-offset');
-    
-    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,4), 'WP Group 1 Rotation (Method 2)', ...
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,2), 'WP Group 2 Top Rotation (Init. Angles)', ...
         'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
-        'rotation-g1-method2-offset');
+        'rotation-1g21-offset');
     
-    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,2), 'WP Group 2 Rotation (Method 2)', ...
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,6), 'WP Group 2 Bot Rotation (Init. Angles)', ...
         'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
-        'rotation-g2-method2-offset');
+        'rotation-1g22-offset');
     
-    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,4) beamRotation(r1:r2,5)], ...
-        'WP Group 1 & 2 Rotation (Method 2)', 'Time (sec)', ...
-        'Rotation (rad)', 'grid', 'legend', {'G1 (Top)', 'G2 (Bottom)'}, ...
-        'visible', 'save', 'rotation-g12-method2-offset');
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,1), beamRotation(r1:r2,2)], ...
+        'WP Group 1&2 Top Rotation (Init. Angles)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1T','WPG2T'}, 'grid', 'visible', 'save', ...
+        'rotation-1g121-offset');
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,5), beamRotation(r1:r2,6)], ...
+        'WP Group 1&2 Bot Rotation (Init. Angles)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1B','WPG2B'},  'grid', 'visible', 'save', ...
+        'rotation-1g122-offset')
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,1), beamRotation(r1:r2,5), ...
+        beamRotation(r1:r2,2), beamRotation(r1:r2,6)], ...
+        'All WP Groups (Init. Angles)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1T', 'WPG1B', 'WPG2T', 'WPG2B'}, 'grid', 'visible', 'save', ...
+        'rotation-1gA-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,6), 'WP Group 1 Top Rotation (Median)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-2g11-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,9), 'WP Group 1 Bot Rotation (Median)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-2g12-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,7), 'WP Group 2 Top Rotation (Median)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-2g21-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,10), 'WP Group 2 Bot Rotation (Median)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-2g22-offset');
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,6), beamRotation(r1:r2,7)], ...
+        'WP Group 1&2 Top Rotation (Median)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1T','WPG2T'}, 'grid', 'visible', 'save', ...
+        'rotation-2g121-offset');
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,9), beamRotation(r1:r2,10)], ...
+        'WP Group 1&2 Bot Rotation (Median)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1B','WPG2B'}, 'grid', 'visible', 'save', ...
+        'rotation-2g122-offset')
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,6), beamRotation(r1:r2,9), ...
+        beamRotation(r1:r2,7), beamRotation(r1:r2,10)], ...
+        'All WP Groups (Median)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPG1T', 'WPG1B', 'WPG2T', 'WPG2B'}, 'grid', 'visible', ...
+        'save', 'rotation-2gA-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,11), 'WP Group 1&2 Top Rotation (Vector)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-3g1-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,12), 'WP Group 1&2 Bot Rotation (Vector)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-3g2-offset');
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,11), beamRotation(r1:r2,12)], ...
+        'All WP Groups (Vector)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPT', 'WPB'}, 'grid', 'visible', ...
+        'save', 'rotation-3gA-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,13), 'WP Group 1&2 Top Rotation (Horn)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-4g1-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,14), 'WP Group 1&2 Bot Rotation (Horn)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-3g2-offset');
+    
+    smartPlot(NormTime(r1:r2), [beamRotation(r1:r2,13), beamRotation(r1:r2,14)], ...
+        'All WP Groups (Horn)', 'Time (sec)', 'Rotation (rad)', ...
+        'legend', {'WPT', 'WPB'}, 'grid', 'visible', ...
+        'save', 'rotation-4gA-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,3), 'WP Group 3 Rotation (Init. Angle)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-1g3-offset');
+    
+    smartPlot(NormTime(r1:r2), beamRotation(r1:r2,8), 'WP Group 3 Rotation (Median)', ...
+        'Time (sec)', 'Rotation (rad)', 'grid', 'visible', 'save', ...
+        'rotation-2g3-offset');
     
     %%%% Wire-pots %%%%
     disp('Plotting wire-pot data');
@@ -893,31 +1010,122 @@ if ProcessOutputPlots == true
         'Offset Linear Potentiometer 2 & 4', 'Time (sec)', 'Length (in)', ...
         'legend', {'LP1','LP2','LP3','LP4'}, 'visible', 'grid', 'save', 'lp-all-offset');
     
-    %%%% Hysteresis %%%%
-    disp('Plotting hysteresis data');
+    %%%% Hysteresis Using Modified Moment %%%%
+    disp('Plotting modified moment hysteresis data');
+    smartPlot(beamRotation(r1:r2,1), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1 (Top) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-1g11-offset');
+    
+    smartPlot(beamRotation(r1:r2,4), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1 (Bot) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-1g12-offset');
+    
+    smartPlot(beamRotation(r1:r2,2), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 2 (Top) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-1g21-offset');
+    
+    smartPlot(beamRotation(r1:r2,5), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 2 (Bot) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-1g22-offset');
+    
+    smartPlot(beamRotation(r1:r2,6), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1 (Top) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-2g11-offset');
+    
+    smartPlot(beamRotation(r1:r2,9), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1 (Bot) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-2g12-offset');
+    
+    smartPlot(beamRotation(r1:r2,7), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 2 (Top) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-2g21-offset');
+    
+    smartPlot(beamRotation(r1:r2,10), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 2 (Bot) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-2g22-offset');
+    
+    smartPlot(beamRotation(r1:r2,11), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1&2 (Top) (Vector)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-3g1-offset');
+    
+    smartPlot(beamRotation(r1:r2,12), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1&2 (Bot) (Vector)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-3g2-offset');
+    
+    smartPlot(beamRotation(r1:r2,13), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1&2 (Top) (Horn)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-4g1-offset');
+    
+    smartPlot(beamRotation(r1:r2,14), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 1&2 (Bot) (Horn)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-4g2-offset');
+    
+    smartPlot(beamRotation(r1:r2,3), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 3 (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-1g3-offset');
+    
+    smartPlot(beamRotation(r1:r2,8), moment(r1:r2,7), ...
+        'Offset Hysteresis - WP Group 3 (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-2g3-offset');
+    
+    %%%% Hysteresis Using Un-Modified Moment %%%%
+    disp('Plotting unmodified moment hysteresis data');
     smartPlot(beamRotation(r1:r2,1), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 1 (Method 1)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g11-offset');
+        'Offset Hysteresis - Unmod - WP Group 1 (Top) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u1g11-offset');
     
     smartPlot(beamRotation(r1:r2,4), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 1 (Method 2)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g12-offset');
+        'Offset Hysteresis - Unmod - WP Group 1 (Bot) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u1g12-offset');
     
     smartPlot(beamRotation(r1:r2,2), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 2 (Method 1)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g21-offset');
+        'Offset Hysteresis - Unmod - WP Group 2 (Top) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u1g21-offset');
     
     smartPlot(beamRotation(r1:r2,5), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 2 (Method 2)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g22-offset');
-    
-    smartPlot(beamRotation(r1:r2,3), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 3 (Method 1)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g31-offset');
+        'Offset Hysteresis - Unmod - WP Group 2 (Bot) (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u1g22-offset');
     
     smartPlot(beamRotation(r1:r2,6), moment(r1:r2,6), ...
-        'Offset Hysteresis Using WP Group 3 (Method 2)', 'Rotation (rad)', ...
-        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-g32-offset');
+        'Offset Hysteresis - Unmod - WP Group 1 (Top) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g11-offset');
+    
+    smartPlot(beamRotation(r1:r2,9), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 1 (Bot) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g12-offset');
+    
+    smartPlot(beamRotation(r1:r2,7), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 2 (Top) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g21-offset');
+    
+    smartPlot(beamRotation(r1:r2,10), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 2 (Bot) (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g22-offset');
+    
+    smartPlot(beamRotation(r1:r2,11), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 1&2 (Top) (Vector)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u3g1-offset');
+    
+    smartPlot(beamRotation(r1:r2,12), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 1&2 (Bot) (Vector)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u3g2-offset');
+    
+    smartPlot(beamRotation(r1:r2,13), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 1&2 (Top) (Horn)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u4g1-offset');
+    
+    smartPlot(beamRotation(r1:r2,14), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 1&2 (Bot) (Horn)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u4g2-offset');
+    
+    smartPlot(beamRotation(r1:r2,3), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 3 (Init. Angle)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u1g3-offset');
+    
+    smartPlot(beamRotation(r1:r2,8), moment(r1:r2,6), ...
+        'Offset Hysteresis - Unmod - WP Group 3 (Median)', 'Rotation (rad)', ...
+        'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g3-offset');
+
 end
 
 %{
