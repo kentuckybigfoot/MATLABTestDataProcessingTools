@@ -1,4 +1,4 @@
-function [ alpha beta gamma ] = lawOfCos(dist)
+function [ alpha, beta, gamma ] = lawOfCos(dist)
 % lawOfCos Law of cosines function
 % Uses law of cosines to determine angles of triangles formed using
 % wirepots. 
@@ -21,9 +21,8 @@ function [ alpha beta gamma ] = lawOfCos(dist)
 %                  A /_?______ß_\ B
 %                          c
 
-alpha = acos((dist(1)^2 - dist(2)^2 - dist(3)^2)/(-2*dist(2)*dist(3)));
-beta  = acos((dist(2)^2 - dist(1)^2 - dist(3)^2)/(-2*dist(1)*dist(3)));
-gamma = acos((dist(3)^2 - dist(1)^2 - dist(2)^2)/(-2*dist(1)*dist(2)));
+alpha(:,1) = acos((dist(:,1).^2 - dist(:,2).^2 - dist(:,3).^2)./(-2*dist(:,2).*dist(:,3)));
+beta(:,1)  = acos((dist(:,2).^2 - dist(:,1).^2 - dist(:,3).^2)./(-2*dist(:,1).*dist(:,3)));
+gamma(:,1) = acos((dist(:,3).^2 - dist(:,1).^2 - dist(:,2).^2)./(-2*dist(:,1).*dist(:,2)));
 
 end
-
