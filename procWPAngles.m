@@ -21,7 +21,7 @@ dist = repmat(dist, sizeOfWP, 1);
 [wp2Angles1(:,1), wp2Angles2(:,1), wp2Angles3(:,1)] = lawOfCos([wp(:,2) wp(:,8) dist(:,2)]);
 
 %Wirepot Set 3
-[wp3Angles1(:,1), wp3Angles2(:,1), wp3Angles3(:,1)] = lawOfCos([wp(:,6) wp(:,5) dist(:,3)]);
+[wp3Angles1(:,1), wp3Angles2(:,1), wp3Angles3(:,1)] = lawOfCos([wp(:,5) wp(:,6) dist(:,3)]);
 
 %Wirepot Set 4
 if dist(:,4) ~= 0
