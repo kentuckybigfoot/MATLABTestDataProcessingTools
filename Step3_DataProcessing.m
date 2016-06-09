@@ -11,9 +11,9 @@ global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
 ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-20-16';
-ProcessFileName              = 'FS Testing - ST2 - Test 1 - 05-20-16';
-ProcessRealName              = 'Full Scale Test 1 - ST2 Only - 05-20-16';
-ProcessCodeName              = 'FST-ST2-May20-1';
+ProcessFileName              = 'FS Testing - ST2 - Test 2 - 05-20-16';
+ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 05-20-16';
+ProcessCodeName              = 'FST-ST2-May20-2';
 ProcessShearTab              = '2'; %1, 2, 3, or 4
 runParallel                  = true;
 localAppend                  = true;
@@ -28,7 +28,7 @@ processWPHeighDistances      = false;
 ProcessLPs                   = true;
 processIMU                   = false;
 ProcessBeamRotation          = true;
-ProcessStrainProfiles        = false;
+ProcessStrainProfiles        = true;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
 ProcessMoments               = true;
@@ -63,8 +63,8 @@ D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 %Constants
 modulus      = 29000; %Modulus of elasticity (ksi)
 boltEquation = 0.1073559499;
-gaugeLength  = [0.19685; 0.19685]; %(in) which is 5 mm
-gaugeWidth   = [0.0590551; 0.19685]; %(in) which is 1.5 mm
+gaugeLength  = [0.19685; 0.450]; %(in) which is 5 mm
+gaugeWidth   = [0.0590551; 0.180]; %(in) which is 1.5 mm
 
 if ProcessShearTab == '2' || ProcessShearTab == '4'
     stMidHeight = 5.75;
@@ -327,31 +327,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ProcessBeamRotation == true
     %Define initial gamma angle to compare again.
-    beamInitialAngle1 = mean(wpAngles(1:50,3)); %Initial angle top of beam
-    beamInitialAngle2 = mean(wpAngles(1:50,6)); %Initial angle bot of beam
-    beamInitialAngle3 = mean(wpAngles(1:50,9)); %Initial angle of pivot rod
-    beamInitialAngle5 = mean(wpAngles(1:50,14)); %Initial angle top of beam
-    beamInitialAngle6 = mean(wpAngles(1:50,17)); %Initial angle of bot rod
-    
-    %Determine the initial slope of the triangles' median (midpoint of
-    %length c to vertex C). This is done so that later the current slope
-    %can be found and relating slope to tangent the change in angle during
-    %rotation can be determined.
-    
-    %Slope beam instrument grouping 1 (closest to ceiling)
-    m11 = (wp(1,7)*sin(mean(wpAngles(1:50,2))) - 0)/(wp(1,7)*cos(mean(wpAngles(1:50,2))) - D1/2);
-    
-    %Slope beam instrument grouping 2 (closest to ceiling)
-    m12 = (wp(1,2)*sin(mean(wpAngles(1:50,5))) - 0)/(wp(1,2)*cos(mean(wpAngles(1:50,5))) - D2/2);
-    
-    %Slope beam instrument grouping 3 (for wirepots at the pivot rod.)
-    m13 = (wp(1,6)*sin(mean(wpAngles(1:50,8))) - 0)/(wp(1,6)*cos(mean(wpAngles(1:50,8))) - 2);
-    
-    %Slope beam instrument grouping 2 (closest to floor)
-    m15 = (wp(1,3)*sin(mean(wpAngles(1:50,14))) - 0)/(wp(1,3)*cos(mean(wpAngles(1:50,14))) - D5/2);
-    
-    %Slope beam instrument grouping 2 (closest to floor)
-    m16 = (wp(1,13)*sin(mean(wpAngles(1:50,17))) - 0)/(wp(1,13)*cos(mean(wpAngles(1:50,17))) - D6/2);
+    beamInitialAngle1 = mean(wpAngles(:,3)); %Initial angle top of beam
+    beamInitialAngle2 = mean(wpAngles(:,6)); %Initial angle bot of beam
+    beamInitialAngle3 = mean(wpAngles(:,9)); %Initial angle of pivot rod
+    beamInitialAngle5 = mean(wpAngles(:,14)); %Initial angle top of beam
+    beamInitialAngle6 = mean(wpAngles(:,17)); %Initial angle of bot rod
     
     %Compare current angle between sides a & b (angle gamma) to the
     %initial angle.
@@ -361,43 +341,25 @@ if ProcessBeamRotation == true
     beamRotation(:,4) = wpAngles(:, 14) - beamInitialAngle5;
     beamRotation(:,5) = wpAngles(:, 17) - beamInitialAngle6;
     
-    %Current slope of the triangle median for the top of the beam,
-    %top of the beam, and pivot rod, bottom group 1 and bottom
-    %group 2, respectively.
-    m21 = (wp(:,7).*sin(wpAngles(:,2)) - 0)./(wp(:,7).*cos(wpAngles(:,2)) - D1/2);
-    m22 = (wp(:,2).*sin(wpAngles(:,5)) - 0)./(wp(:,2).*cos(wpAngles(:,5)) - D2/2);
-    m23 = (wp(:,6).*sin(wpAngles(:,8)) - 0)./(wp(:,6).*cos(wpAngles(:,8)) - 2);
-    m25 = (wp(:,3).*sin(wpAngles(:,14)) - 0)./(wp(:,3).*cos(wpAngles(:,14)) - D5/2);
-    m26 = (wp(:,13).*sin(wpAngles(:,17)) - 0)./(wp(:,13).*cos(wpAngles(:,17)) - D6/2);
-    
-    %Calculate the angle between the initial and current median for the
-    %top of the beam, top of the beam, and pivot rod, bottom group 1
-    %and bottom group 2, respectively.
-    beamRotation(:,6)  = atan2((m21 - m11),(1 + m11*m21));
-    beamRotation(:,7)  = atan2((m22 - m12),(1 + m12*m22));
-    beamRotation(:,8)  = atan2((m23 - m13),(1 + m13*m23));
-    beamRotation(:,9)  = atan2((m25 - m15),(1 + m15*m25));
-    beamRotation(:,10) = atan2((m26 - m16),(1 + m16*m26));
-    
     %Use vectors to determine total rotation of beam
     %For top wirepot groups
-    Vi = [x3Glo(1,1)-x3Glo(1,2) y3Glo(1,1)-y3Glo(1,2)];
+    Vi = [mean(x3Glo(:,1))-mean(x3Glo(:,2)) mean(y3Glo(:,1))-mean(y3Glo(:,2))];
     V = [x3Glo(:,1)-x3Glo(:,2) y3Glo(:,1)-y3Glo(:,2)];
     
     VDot(:,1) = dot(repmat(Vi,size(V,1),1), V, 2);
     ViMag = sqrt(Vi(1)^2 + Vi(2)^2);
     VMag(:,1) = sqrt(V(:,1).^2 + V(:,2).^2);
-    beamRotation(:,11) = acos(VDot./(ViMag * VMag));
+    beamRotation(:,11) = acos(VDot./(ViMag .* VMag));
     
     %For bottom wirepot groups
     clearvars Vi V VDot ViMag VMag;
-    Vi = [x3Glo(1,3)-x3Glo(1,4) y3Glo(1,3)-y3Glo(1,4)];
+    Vi = [mean(x3Glo(:,3))-mean(x3Glo(:,4)) mean(y3Glo(:,3))-mean(y3Glo(:,4))];
     V = [x3Glo(:,3)-x3Glo(:,4) y3Glo(:,3)-y3Glo(:,4)];
     
     VDot(:,1) = dot(repmat(Vi,size(V,1),1), V, 2);
     ViMag = sqrt(Vi(1)^2 + Vi(2)^2);
     VMag(:,1) = sqrt(V(:,1).^2 + V(:,2).^2);
-    beamRotation(:,12) = acos(VDot./(ViMag * VMag));
+    beamRotation(:,12) = acos(VDot./(ViMag .* VMag));
     
     %Use Horn's Method to calculate rotation and also get COR from this.
     %See 
@@ -471,7 +433,7 @@ if ProcessBeamRotation == true
     
     beamRotation(:,18) = (lpdx1 + lpdx2)./h1LP;
 
-    clearvars m11 m12 m13 m15 m16 m21 m22 m23 m25 m26 beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
+    clearvars beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
     if localAppend == true
         save(ProcessFileName, 'beamRotation', '-append');
@@ -590,39 +552,6 @@ if ProcessForces == true
         
     end
 end
-
-%{
-if ProcessShearTab == '2' || ProcessShearTab == '4'
-    gaugeRange = 2:5;
-    gaugeRangeExt = 1:6;
-else
-    gaugeRange = 2:4;
-    gaugeRangeExt = 1:5;
-end
-
-variableList = {'sgReg(:,gaugeRange)', 'sgRegBend(:,gaugeRange)', 'sgRegBFFD(:,gaugeRange)', 'sgReg(:,gaugeRangeExt)', 'sgRegBend(:,gaugeRangeExt)', 'sgRegBFFD(:,gaugeRangeExt)'};
-
-for q = 1:1:length(variableList)
-    
-    variableTemp = eval(variableList{q});
-    
-    for r = 1:1:size(variableTemp,1)
-
-        A = variableTemp(r, :);
-
-        if all(A > 0)
-            %Axial tension force
-            parity(r,q) = 1;
-        elseif all(A < 0)
-            %Axial compression force
-            parity(r,q) = -1;
-        else
-            %Should be a moment
-            parity(r,q) = 0;
-        end
-    end
-end
-%}
 
 if ProcessMoments == true
     %Generate strain gauge width increments
