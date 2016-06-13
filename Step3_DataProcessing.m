@@ -36,46 +36,6 @@ ProcessEQM                   = true;
 ProcessGarbageCollection     = false;
 ProcessOutputPlots           = false;
 
-% The very end where the pivot rests serves as reference for all
-% measurements. All measurements are assumed to start at the extreme end of
-% the column below the pivot point in the center of the web. Dimensions are
-% given in (x,y)and represent the center of the hook at the end of the
-% wire. Dimensions for the wire pots can be found in Fig. 2 of page 68
-% (WDS-...-P60-CR-P) of http://www.micro-epsilon.com/download/manuals/man--wireSENSOR-P60-P96-P115--de-en.pdf
-
-wp11Pos = [(13+7/8)+0.50+0.39 (8*12)-(38 + 2+ 5/16 + (5.07-2.71654))];
-wp12Pos = [(13+7/8)+0.39 (22.9375+0.1875+0.1250+(5.07-2.71654))];
-wp21Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];  %Same as WP4-1 in theory
-wp22Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)]; %Same as WP4-2 in theory
-wp31Pos = [0 0];
-wp32Pos = [0 0];
-wp41Pos = [((5.07-2.71654)+0.125) (48.125+0.39)];
-wp42Pos = [((5.07-2.71654)+0.125) (32.1875+0.39)];
-wp71Pos = [(13+7/8)+0.50+0.39 (8*12)-(37.75 + 5/16 + (5.07-2.71654))]; %Same as WP1-1 in theory
-wp72Pos = [(13+7/8)+0.39 (23.1875+0.1250+(5.07-2.71654))];             %Same as WP1-2 in theory
-D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
-D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
-D3 = 4; %WP group measuring bottom global position
-D4 = 0;
-D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
-D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
-
-%Constants
-modulus      = 29000; %Modulus of elasticity (ksi)
-boltEquation = 0.1073559499;
-gaugeLength  = [0.19685; 0.450]; %(in) which is 5 mm
-gaugeWidth   = [0.0590551; 0.180]; %(in) which is 1.5 mm
-
-if ProcessShearTab == '2' || ProcessShearTab == '4'
-    stMidHeight = 5.75;
-    yGaugeLocations = [4.5; 1.5; -1.5; -4.5; -10];
-    yGaugeLocationsExpanded = [stMidHeight; 4.5; 1.5; -1.5; -4.5; -stMidHeight; -10];
-else
-    stMidHeight = 4.25;
-    yGaugeLocations = [3; 0; -3; -9];
-    yGaugeLocationsExpanded = [stMidHeight; 3; 0; -3; -stMidHeight; -9];
-end
-
 %Load data. Checks if IMU data exists and processes it if so. This is more
 %of a legacy feature since IMU was not added until months after testing
 %began.
@@ -90,6 +50,50 @@ else
     processIMU = false; %Failsafe incase trying to proccess non-exist. file
 end
 
+%Load coordinates of wire-pots. See "help wpPosition" for more information
+%on wirepot coordinates/scheme. The following lines essentially take the
+%output of that function and assign it to easily read variable names.
+wpPos = wpPosition(ProcessFileName);
+
+wp11Pos = wpPos(1,:);
+wp12Pos = wpPos(2,:);
+wp21Pos = wpPos(3,:);
+wp22Pos = wpPos(4,:);
+wp31Pos = wpPos(5,:);
+wp32Pos = wpPos(6,:);
+wp41Pos = wpPos(7,:);
+wp42Pos = wpPos(8,:);
+wp51Pos = wpPos(9,:);
+wp52Pos = wpPos(10,:);
+wp61Pos = wpPos(11,:);
+wp62Pos = wpPos(12,:);
+wp71Pos = wpPos(13,:);
+wp72Pos = wpPos(14,:);
+
+%Get distances between wirepot triangle vertices A and B (line c).
+D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
+D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
+D3 = 4; %WP group measuring bottom global position
+D4 = 4; %WP group measuring top global position
+D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
+D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
+
+%Basic constants
+modulus      = 29000; %Modulus of elasticity (ksi)
+boltEquation = 0.1073559499;
+gaugeLength  = [0.19685; 0.450]; %(in) which is 5 mm
+gaugeWidth   = [0.0590551; 0.180]; %(in) which is 1.5 mm
+
+%Shear tab coordinate system and bolt hole location information.
+if ProcessShearTab == '2' || ProcessShearTab == '4'
+    stMidHeight = 5.75;
+    yGaugeLocations = [4.5; 1.5; -1.5; -4.5; -10];
+    yGaugeLocationsExpanded = [stMidHeight; 4.5; 1.5; -1.5; -4.5; -stMidHeight; -10];
+else
+    stMidHeight = 4.25;
+    yGaugeLocations = [3; 0; -3; -9];
+    yGaugeLocationsExpanded = [stMidHeight; 3; 0; -3; -stMidHeight; -9];
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY                     %
