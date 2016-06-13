@@ -2,12 +2,12 @@ clear all
 close all
 clc
 
-t_textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 06-01-16\'; %Location of File
-t_textFileName     = 'fs testing -st2 - 06-01-16Run'; %Name of file to be processed
-t_textFileSeed     = 10000;
-t_saveFileAs       = fullfile(t_textFileLocation, 'FS Testing - ST2 - Test 10 - 06-01-16'); %What to name file upon save
-t_saveFileAs2      = fullfile(t_textFileLocation, '[Filter]FS Testing - ST2 - Test 10 - 06-01-16');
-t_amount           = 204; %42;
+t_textFileLocation = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 06-13-16\'; %Location of File
+t_textFileName     = 'fs testing -st2 - 06-13-16Run'; %Name of file to be processed
+t_textFileSeed     = 1000;
+t_saveFileAs       = fullfile(t_textFileLocation, 'FS Testing - ST1 - Test 1 - 06-13-16.mat'); %What to name file upon save
+t_saveFileAs2      = fullfile(t_textFileLocation, '[Filter]FS Testing - ST1 - Test 1 - 06-13-16.mat');
+t_amount           = 1; %42;
 
 t_names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4','wp52'};
 t_formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
@@ -226,7 +226,7 @@ for t_r = 1:1:t_amount;
     toc
     %save(sprintf('%s%d',t_saveFileAs, t_r), '-regexp', '^(?!t_.*$).')
     %save(t_saveFileAs2, '-regexp', '^(?!t_.*$).')
-    clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y j textFileName timeModifier NormTime run sg1 sg2 sg3 sg4 sg5 sg6 sg7 sg8 sg9 sg10 sg11 sg12 sg13 sg14 sg15 sg16 sg17 sg18 sg19 sg20 sg21 sg22 wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 sgBolt wp61 wp62 wp71 wp72 LC1 LC2 LC3 LC4 MTSLC MTSLVDT A B C D E F G H LP1 LP3 LP2 LP4;
+    clearvars filename delimiter startRow formatSpec fileID dataArray ans raw col numericData rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R amount i names textFileLocation textFileLocation textFileSeed x y j textFileName timeModifier NormTime run sg1 sg2 sg3 sg4 sg5 sg6 sg7 sg8 sg9 sg10 sg11 sg12 sg13 sg14 sg15 sg16 sg17 sg18 sg19 sg20 sg21 sg22 wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 sgBolt wp61 wp62 wp71 wp72 LC1 LC2 LC3 LC4 MTSLC MTSLVDT A B C D E F G H LP1 LP3 LP2 LP4 wp52;
 end
    tic
 %Correct Time
@@ -239,6 +239,6 @@ m.NormTime = NormTime;
 
 clearvars -except t_saveFileAs t_saveFileAs2
 
-load(sprintf('%s.mat',t_saveFileAs));
-save(t_saveFileAs2, '-v7.3', '-regexp', '^(?!t_.*$).');
+%Make filter copy
+copyfile(t_saveFileAs, t_saveFileAs2)
 toc
