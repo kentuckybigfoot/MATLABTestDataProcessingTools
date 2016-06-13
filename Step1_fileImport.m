@@ -9,8 +9,8 @@ t_saveFileAs       = fullfile(t_textFileLocation, 'FS Testing - ST2 - Test 10 - 
 t_saveFileAs2      = fullfile(t_textFileLocation, '[Filter]FS Testing - ST2 - Test 10 - 06-01-16');
 t_amount           = 204; %42;
 
-t_names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4'};
-t_formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
+t_names = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP3','LP2','LP4','wp52'};
+t_formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
 
 %Create empty doubles for empty file
 for t_y = 1:1:length(t_names)
@@ -20,7 +20,9 @@ end
 %Same empty file to write to
 save(t_saveFileAs, '-v7.3', '-regexp', '^(?!t_.*$).');
 
+%Open
 m = matfile(t_saveFileAs, 'Writable', true);
+
 %Variable to save row count of each file
 lengthOfFile = [];
 
@@ -150,6 +152,7 @@ for t_r = 1:1:t_amount;
         LP3(length(LP3)+1,:) = cell2mat(raw(i, 54));
         LP2(length(LP2)+1,:) = cell2mat(raw(i, 55));
         LP4(length(LP4)+1,:) = cell2mat(raw(i, 56));
+        wp52(length(wp52)+1,:) = cell2mat(raw(i, 57));
     end
     
     %Determine column ranges to save data to
@@ -159,9 +162,6 @@ for t_r = 1:1:t_amount;
         prev = saveRanges(t_r-1,2);
         saveRanges(t_r,:) = [(prev+1) prev+lengthOfFile(t_r)];
     end
-    
-    %Open 
-   % m = matfile(t_saveFileAs, 'Writable', true);
     
     m.NormTime(saveRanges(t_r,1):saveRanges(t_r,2),1) = NormTime;
     m.run(saveRanges(t_r,1):saveRanges(t_r,2),2) = run;
@@ -219,6 +219,7 @@ for t_r = 1:1:t_amount;
     m.LP3(saveRanges(t_r,1):saveRanges(t_r,2),54) = LP3;
     m.LP2(saveRanges(t_r,1):saveRanges(t_r,2),55) = LP2;
     m.LP4(saveRanges(t_r,1):saveRanges(t_r,2),56) = LP4;
+    m.wp52(saveRanges(t_r,1):saveRanges(t_r,2),57) = wp52;
     
     %Determine save range
     t_complete = (t_r/t_amount)*100
@@ -236,8 +237,8 @@ for x = 2:1:length(NormTime)
 end
 m.NormTime = NormTime;
 
-clearvars -except t_saveFileAs2
+clearvars -except t_saveFileAs t_saveFileAs2
 
-load(sprintf('%s.mat',t_saveFileAs2));
+load(sprintf('%s.mat',t_saveFileAs));
 save(t_saveFileAs2, '-v7.3', '-regexp', '^(?!t_.*$).');
 toc
