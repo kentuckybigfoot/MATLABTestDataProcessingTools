@@ -1,10 +1,10 @@
 function filterGUI
 
-filename = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-20-16\[Filter]FS Testing - ST2 - Test 1 - 05-20-16.mat';
-d = load(filename);
+filename = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST1 - 06-27-16\[Filter]FS Testing - ST1 - Test 1 - 06-27-16.mat';
+
+d1 = load(filename, 'NormTime');
 
 sensorNames       = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','wp52','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP2','LP3','LP4'};
-sensorNamesStruct = {d.NormTime, d.run, d.sg1, d.sg2, d.sg3, d.sg4, d.sg5, d.sg6, d.sg7, d.sg8, d.sg9, d.sg10, d.sg11, d.sg12, d.sg13, d.sg14, d.sg15, d.sg16, d.sg17, d.sg18, d.sg19, d.sg20, d.sg21, d.sg22, d.wp11, d.wp12, d.wp21, d.wp22, d.wp31, d.wp32, d.wp41, d.wp42, d.wp51, d.wp52, d.sgBolt, d.wp61, d.wp62, d.wp71, d.wp72, d.LC1, d.LC2, d.LC3, d.LC4, d.MTSLC, d.MTSLVDT,d.A,d.B,d.C,d.D,d.E,d.F,d.G,d.H, d.LP1, d.LP2, d.LP3, d.LP4};
 
 %Allocate variables that describe variable to be filtered
 filterVariable = [];
@@ -20,7 +20,7 @@ recFreq = [];
 recStr  = [];
 
 %Initial values.
-t     = d.NormTime;                 % Sample Time
+t     = d1.NormTime;                 % Sample Time
 L     = length(t);                  % Length of signal
 fs    = 1/(t(2)-t(1));              % Sampling frequency
 Fpass = 0;%0.0028*2*(1/fs);
@@ -207,7 +207,8 @@ c1G5.Units = 'normalized';
 %set(findobj(filterGUIFig),'Units','Normalized')
 
     function FFTPlot(source,eventData)
-        filterVariable = sensorNamesStruct{source.Value};
+        d = load(filename, sensorNames{source.Value});
+        filterVariable = d.(sensorNames{source.Value});
         filterVariableName = source.String{source.Value};
         filterVariableKey = source.Value;
         
@@ -240,7 +241,7 @@ c1G5.Units = 'normalized';
         filterGUIFFTFig.Visible = 'off';
         filterGUIFig.Visible = 'on';
         
-        filterDataOriginal.XData = d.NormTime;
+        filterDataOriginal.XData = d1.NormTime;
         filterDataOriginal.YData = filterVariable;
         
         %Update axis and titles
