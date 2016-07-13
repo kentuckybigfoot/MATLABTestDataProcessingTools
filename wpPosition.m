@@ -21,7 +21,13 @@ list1 = {'FS Testing -ST2 - 05-09-16', 'FS Testing -ST2 - 05-16-16', ...
          'FS Testing -ST2 - 05-31-16', 'FS Testing -ST2 - 05-06-16'};
      
 list2 = {'FS Testing -ST2 - 06-13-16', 'FS Testing -ST1 - 06-15-16', ...
-         'FS Testing -ST1 - 06-17-16'};
+         'FS Testing -ST1 - 06-17-16', 'FS Testing -ST1 - 06-22-16', ...
+         'FS Testing -ST1 - 06-27-16', 'FS Testing -ST1 - 07-01-16', ...
+         'FS Testing -ST1 - 07-03-16', 'FS Testing -ST1 - 07-05-16', ...
+         'FS Testing -ST1 - 07-07-16'};
+     
+list2 = {'FS Testing -ST4 - 07-12-16', 'FS Testing -ST4 - 07-13-16', ...
+         }
      
 if any(cell2mat(regexp(ProcessFileName,list1)))
     %x = dist to outside of op flange, y = dist to outside of wp12 angle to
@@ -55,13 +61,31 @@ if any(cell2mat(regexp(ProcessFileName,list2)))
     wp32Pos = [0 0];
     wp41Pos = [0.125+(5.07-2.71654) 48.25+9.5+13.21875+0.39];
     wp42Pos = [0.125+(5.07-2.71654) 48.25+9.5+0.39];
-    wp51Pos = [0 0];
-    wp52Pos = [0 0];
+    wp51Pos = [(3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
+    wp52Pos = [(3.9375+3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
     wp61Pos = [0 0];
     wp62Pos = [0 0];
     wp71Pos = [13.8125+0.39 (48.5+2.175+28.4375)-(5.07-2.71654)]; %Same as WP1-1 in theory
     wp72Pos = [13.8125+0.39 48.5+2.175+(5.07-2.71654)];           %Same as WP1-2 in theory
 end
+
+if any(cell2mat(regexp(ProcessFileName,list3)))
+    wp11Pos = [13.8125+0.39 (48.5+2.175+28.4375)-(5.07-2.71654)];
+    wp12Pos = [13.8125+0.39 48.5+2.175+(5.07-2.71654)];
+    wp21Pos = [0.125+(5.07-2.71654) 48.25+9.5+13.21875+0.39];  %Same as WP4-1 in theory
+    wp22Pos = [0.125+(5.07-2.71654) 48.25+9.5+0.39];           %Same as WP4-2 in theory
+    wp31Pos = [0 0];
+    wp32Pos = [0 0];
+    wp41Pos = [0.125+(5.07-2.71654) 48.25+9.5+13.21875+0.39];
+    wp42Pos = [0.125+(5.07-2.71654) 48.25+9.5+0.39];
+    wp51Pos = [(3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
+    wp52Pos = [(3.9375+3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
+    wp61Pos = [0 0];
+    wp62Pos = [0 0];
+    wp71Pos = [13.8125+0.39 (48.5+2.175+28.4375)-(5.07-2.71654)]; %Same as WP1-1 in theory
+    wp72Pos = [13.8125+0.39 48.5+2.175+(5.07-2.71654)];           %Same as WP1-2 in theory
+end
+    
 
 wpPos = [wp11Pos; wp12Pos; wp21Pos; wp22Pos; wp31Pos; wp32Pos; wp41Pos; wp42Pos; wp51Pos; wp52Pos; wp61Pos; wp62Pos; wp71Pos; wp72Pos];
 end
