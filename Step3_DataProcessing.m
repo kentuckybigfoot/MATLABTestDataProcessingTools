@@ -3,18 +3,18 @@ close all
 clear
 
 format long;
-
+s
 global ProcessRealName %So we can pick this up in function calls
 global ProcessCodeName %So we can pick this up in function calls
 global ProcessFileName %So we can pick this up in function calls
 global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
-ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST2 - 05-20-16';
-ProcessFileName              = 'FS Testing - ST2 - Test 2 - 05-20-16';
-ProcessRealName              = 'Full Scale Test 2 - ST2 Only - 05-20-16';
+ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST1 - 06-27-16\';
+ProcessFileName              = 'FS Testing - ST1 - Test 6 - 06-27-16';
+ProcessRealName              = 'Full Scale Test 3 - ST1 - 05-24-16';
 ProcessCodeName              = 'FST-ST2-May20-2';
-ProcessShearTab              = '2'; %1, 2, 3, or 4
+ProcessShearTab              = '1'; %1, 2, 3, or 4
 runParallel                  = true;
 localAppend                  = true;
 ProcessConsolidateSGs        = true;
@@ -22,9 +22,9 @@ ProcessConsolidateWPs        = true;
 ProcessConsolidateLPs        = true;
 ProcessConsolidateLCs        = true;
 ProcessWPAngles              = true;
+ProcessWPPropeties           = true;
 ProcessWPCoords              = true;
-ProcessWPHeights             = false;
-processWPHeighDistances      = false;
+ProcessSlip                  = false;%true;
 ProcessLPs                   = true;
 processIMU                   = false;
 ProcessBeamRotation          = true;
@@ -74,7 +74,7 @@ wp72Pos = wpPos(14,:);
 D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
 D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
 D3 = 4; %WP group measuring bottom global position
-D4 = 4; %WP group measuring top global position
+D4 = (3 + (7/8)); %WP group measuring top global position
 D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
 D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 
@@ -111,7 +111,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CONSOLIDATE WIRE POTENTIOMETER VARIABLES INTO SINGLE ARAY                %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Slightly faster to use cat() but this provides me with a name chart.
+%Slightly faster to use cat() but this provides us with a name chart.
 if ProcessConsolidateWPs == true
     wp(:,1)  = wp11(:,1);
     wp(:,2)  = wp12(:,1);
@@ -126,8 +126,9 @@ if ProcessConsolidateWPs == true
     wp(:,11) = wp62(:,1);
     wp(:,12) = wp71(:,1);
     wp(:,13) = wp72(:,1);
+    wp(:,14) = wp52(:,1);
     wp       = wp + 2.71654;
-    wp(:,14) = MTSLVDT(:,1);
+    wp(:,15) = MTSLVDT(:,1);
     
     disp('WP variables successfully converted into one. Appending to file and removing garbage.')
     clearvars wp11 wp12 wp21 wp22 wp31 wp32 wp41 wp42 wp51 wp61 wp62 wp71 wp72 MTSLVDT;
@@ -145,6 +146,7 @@ if ProcessConsolidateLPs == true
     lp(:,2)  = LP2(:,1);
     lp(:,3)  = LP3(:,1);
     lp(:,4)  = LP4(:,1);
+    
     lp(:,5)  = (offset(LP1(:,1)) + offset(LP3(:,1)))/2;
     lp(:,6)  = (offset(LP2(:,1)) + offset(LP4(:,1)))/2;
     
@@ -165,11 +167,22 @@ if ProcessConsolidateLCs == true
     lc(:,3) = LC3(:,1);
     lc(:,4) = LC4(:,1);
     lc(:,5) = MTSLC(:,1);
-    lc(:,6) = offset(LC1(:,1))+offset(LC2(:,1));
-    lc(:,7) = offset(LC3(:,1))+offset(LC4(:,1));
+    
+    %If beam is in contact with LC at the beginning of the test a
+    %compressive force is occuring that can sway data if not handled
+    %properly. To account for this we find the peak of the LC data (which
+    %occurs when the beam is not in contact with the the LC) and offset
+    %data
+    [maxtab1 mintab1] = peakdet(lc(:,1), 25);
+    [maxtab2 mintab2] = peakdet(lc(:,2), 25);
+    [maxtab3 mintab3] = peakdet(lc(:,3), 25);
+    [maxtab4 mintab4] = peakdet(lc(:,4), 25);
+    
+    lc(:,6) = (LC1(:,1)-LC1(maxtab1(1,1)))+(LC2(:,1)-LC2(maxtab2(1,1)));
+    lc(:,7) = (LC3(:,1)-LC3(maxtab3(1,1)))+(LC4(:,1)-LC4(maxtab4(1,1)));
     
     disp('Load cell variables successfully converted into one. Appending to file and removing garbage.')
-    clearvars LC1 LC2 LC3 LC4 MTSLC;
+    clearvars LC1 LC2 LC3 LC4 MTSLC maxtab1 mintab1  maxtab2 mintab2  maxtab3 mintab3  maxtab4 mintab4;
     if localAppend == true
         save(ProcessFileName, 'lc', '-append');
     end
@@ -190,7 +203,7 @@ if ProcessWPAngles == true
     c5 = find(round(wpAngles(:,13) + wpAngles(:,14) + wpAngles(:,15),12) ~= round(pi,12));
     c6 = find(round(wpAngles(:,16) + wpAngles(:,17) + wpAngles(:,18),12) ~= round(pi,12));
     
-    if all([c1, c2, c3, c5, c6]) == 0
+    if all([c1, c2, c3, c4, c5, c6]) == 0
         error('Check angles for accuracy. Unable to verify all angles equal pi');
     end
 
@@ -201,6 +214,52 @@ if ProcessWPAngles == true
         save(ProcessFileName, 'wpAngles', 'wpAnglesDeg', '-append');
         disp('Angles appended successfully.');
     end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%CALCULATE VARIOUS PROPERTIES OF WIRE POT TRIANGLES                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ProcessWPPropeties == true
+    %Array to hold repmap'd length of line c on the triangles
+    sizeOfWP = size(wp,1);
+    dist = cat(2, repmat(D1, sizeOfWP, 1), repmat(D2, sizeOfWP, 1), ...
+                  repmat(D3, sizeOfWP, 1), repmat(D4, sizeOfWP, 1), ...
+                  repmat(D5, sizeOfWP, 1), repmat(D6, sizeOfWP, 1));
+              
+    %Define WP Groups in a, b, and c order
+    g1 = [wp(:,7) wp(:,1) dist(:,1)];
+    g2 = [wp(:,2) wp(:,8) dist(:,2)];
+    g3 = [wp(:,5) wp(:,6) dist(:,3)];
+    g4 = [wp(:,9) wp(:,14) dist(:,4)];
+    g5 = [wp(:,3) wp(:,12) dist(:,5)];
+    g6 = [wp(:,13) wp(:,4) dist(:,6)];
+    
+    %Calculate WP triangle areas
+    wpArea = cat(2, heronsFormula(g1), heronsFormula(g2), heronsFormula(g3), heronsFormula(g4), heronsFormula(g5), heronsFormula(g6));
+    
+    %Calc distance from vertex A to point of the perpendicular base to apex
+    d1 = (-1.*(g1(:,1).^2) +  g1(:,2).^2 + g1(:,3).^2)./(2.*g1(:,3));
+    d2 = (-1.*(g2(:,1).^2) +  g2(:,2).^2 + g2(:,3).^2)./(2.*g2(:,3));
+    d3 = (-1.*(g3(:,1).^2) +  g3(:,2).^2 + g3(:,3).^2)./(2.*g3(:,3));
+    d4 = (-1.*(g4(:,1).^2) +  g4(:,2).^2 + g4(:,3).^2)./(2.*g4(:,3));
+    d5 = (-1.*(g5(:,1).^2) +  g5(:,2).^2 + g5(:,3).^2)./(2.*g5(:,3));
+    d6 = (-1.*(g6(:,1).^2) +  g6(:,2).^2 + g6(:,3).^2)./(2.*g6(:,3));
+    
+    wpd = cat(2, d1, d2, d3, d4, d5, d6);
+    
+    %Calculate WP triangle heights using area
+    wpHeight = cat(2, (2.*(wpArea(:,1)./dist(:,1))),  (2.*(wpArea(:,2)./dist(:,2))),  (2.*(wpArea(:,3)./dist(:,3))),  (2.*(wpArea(:,4)./dist(:,4))),  (2.*(wpArea(:,5)./dist(:,5))),  (2.*(wpArea(:,6)./dist(:,6))));
+    
+    %Calculate WP triangle heights using the Pythagorean theorem since we
+    %know the length of the perpendicular from the base to the apex (d).
+    wpHeight2 = cat(2, sqrt(g1(:,2).^2 - wpd(:,1).^2), sqrt(g2(:,2).^2 - wpd(:,2).^2), ...
+                       sqrt(g3(:,2).^2 - wpd(:,3).^2), sqrt(g4(:,2).^2 - wpd(:,4).^2), ...
+                       sqrt(g5(:,2).^2 - wpd(:,5).^2), sqrt(g6(:,2).^2 - wpd(:,6).^2));
+                   
+    %Calculate Altitudes
+    %Median
+    %Angle bisector
+    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -242,26 +301,60 @@ if ProcessWPCoords == true
     y3Loc(:,4) = (wp22Pos(2)-wp72Pos(2)) + (wp(:,4).*sin(coordAngles(:,4)));
     y3Glo(:,4) = wp22Pos(2) + y3Loc(:,4);
     
+    %WP G5 at Top of Column (Global Positioning)
+    %Using WP5-1
+    x3Loc(:,5) = wp(:,9).*sin((pi/2) - wpAngles(:,10));
+    x3Glo(:,5) = wp51Pos(1) + x3Loc(:,5);
+    
+    y3Loc(:,5) = wp(:,9).*cos((pi/2) - wpAngles(:,10));
+    y3Glo(:,5) = wp51Pos(2) + y3Loc(:,5);
+    
+    %Using WP5-2
+    x3Loc(:,6) = wp(:,14).*sin((pi/2) - wpAngles(:,11));
+    x3Glo(:,6) = wp52Pos(1) + x3Loc(:,6);
+    
+    y3Loc(:,6) = wp(:,14).*cos((pi/2) - wpAngles(:,11));
+    y3Glo(:,6) = wp52Pos(2) + y3Loc(:,6);
+    
     %Get (x4,y4) coords middle of line c
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %Don't need a local since it would just be half the length of the line
     %C which we calculate in the D* variables.
     
     %WP G1 Top
-    x4Glo(:,1) = (wp41Pos(1) + wp11Pos(1))/2; 
+    x4Glo(:,1) = (wp41Pos(1) + wp11Pos(1))/2;
     y4Glo(:,1) = (wp41Pos(2) + wp11Pos(2))/2;
     
     %WP G1 Bottom
-    x4Glo(:,2) = (wp21Pos(1) + wp71Pos(1))/2; 
+    x4Glo(:,2) = (wp21Pos(1) + wp71Pos(1))/2;
     y4Glo(:,2) = (wp21Pos(2) + wp71Pos(2))/2;
     
     %WP G2 Top
-    x4Glo(:,3) = (wp42Pos(1) + wp12Pos(1))/2; 
+    x4Glo(:,3) = (wp42Pos(1) + wp12Pos(1))/2;
     y4Glo(:,3) = (wp42Pos(2) + wp12Pos(2))/2;
     
     %WP G2 Bottom
-    x4Glo(:,4) = (wp22Pos(1) + wp72Pos(1))/2; 
-    y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;    
+    x4Glo(:,4) = (wp22Pos(1) + wp72Pos(1))/2;
+    y4Glo(:,4) = (wp22Pos(2) + wp72Pos(2))/2;
+    
+    if localAppend == true
+        save(ProcessFileName, 'x3Loc', 'y3Loc', 'x3Glo', 'y3Glo', 'x4Glo', 'y4Glo', '-append');
+        disp('Angles appended successfully.');
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%CHECK FOR INDICATION OF CONNECTION SLIP                                  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Murky concept at this point. find peaks of MTS LVDT, find zeroes between 
+%peaks, compare zero to zero at each height of the ramp inbetween to see if
+%overall coordinates of connection have changed. quantify change between
+%them.
+%May also want to look for sudden shift in force graph or overall rotation.
+%Will also eventually look for sudden jump in strain gauges.
+
+if ProcessSlip == true
+    [maxtab1 mintab1] = peakdet(wp(:,15), 0.1);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -334,6 +427,7 @@ if ProcessBeamRotation == true
     beamInitialAngle1 = mean(wpAngles(:,3)); %Initial angle top of beam
     beamInitialAngle2 = mean(wpAngles(:,6)); %Initial angle bot of beam
     beamInitialAngle3 = mean(wpAngles(:,9)); %Initial angle of pivot rod
+    beamInitialAngle4 = mean(wpAngles(:,12)); %Initial angle of column top %%%REMAP
     beamInitialAngle5 = mean(wpAngles(:,14)); %Initial angle top of beam
     beamInitialAngle6 = mean(wpAngles(:,17)); %Initial angle of bot rod
     
@@ -344,6 +438,7 @@ if ProcessBeamRotation == true
     beamRotation(:,3) = wpAngles(:, 9) - beamInitialAngle3;
     beamRotation(:,4) = wpAngles(:, 14) - beamInitialAngle5;
     beamRotation(:,5) = wpAngles(:, 17) - beamInitialAngle6;
+    beamRotation(:,6) = wpAngles(:, 12) - beamInitialAngle4; %%%REMAP
     
     %Use vectors to determine total rotation of beam
     %For top wirepot groups
@@ -374,18 +469,25 @@ if ProcessBeamRotation == true
     %Init posistion
     pointsA = [[mean(x3Glo(:,1)); mean(y3Glo(:,1))] [mean(x3Glo(:,2)); mean(y3Glo(:,2))] [mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]]; 
     %pointsA2 = [[mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]];
+    pointsA3 = [[mean(x3Glo(:,5)); mean(y3Glo(:,5))] [mean(x3Glo(:,6)); mean(y3Glo(:,6))] [wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)]]; 
+    
     
     %To prevent broadcast variables and increase speed
     x1 = x3Glo(:,1); x2 = x3Glo(:,2); x3 = x3Glo(:,3); x4 = x3Glo(:,4);
     y1 = y3Glo(:,1); y2 = y3Glo(:,2); y3 = y3Glo(:,3); y4 = y3Glo(:,4);
     
+    x13 = x3Glo(:,5); x23 = x3Glo(:,6);
+    y13 = y3Glo(:,5); y23 = y3Glo(:,6);
+    tic
     parfor r = 1:1:size(wp,1);
         %Current Position
         pointsB = [[x1(r); y1(r)] [x2(r); y2(r)] [x3(r); y3(r)] [x4(r); y4(r)]];
         %pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
+        pointsB3 = [[x13(r); y13(r)] [x23(r); y23(r)] [wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)]];
         
         rotInfo(r) = [absor(pointsA, pointsB)];
         %rotInfo2(r) = [absor(pointsA2, pointsB2)];
+        rotInfo3(r) = [absor(pointsA3, pointsB3)];
         
         %With the translation and rotation matrix from absor() we know that
         %COR=R*x + t describes the center of rotation if we find a point on
@@ -393,19 +495,24 @@ if ProcessBeamRotation == true
         %R)\t.
         %beamCOR(r,1:2) = (eye(2)-rotInfo(r).R)\rotInfo(r).t;
         %beamCOR(r,2:4) = (eye(2)-rotInfo2(r).R)\rotInfo2(r).t;
-    end 
+    end
+    toc
     
     tempVar = [rotInfo(:).theta].';
     %tempVar2 = [rotInfo2(:).theta].';
+    tempVar3 = [rotInfo3(:).theta].';
     
-    [row1, col1] = find(tempVar > 1);
+    [row1, col1] = find(tempVar > 25);
     %[row2, col2] = find(tempVar2 > 1);
+    [row3, col3] = find(tempVar3 > 25);
     
     beamRotation(:,13) = tempVar;
     %beamRotation(:,14) = tempVar2;
+    beamRotation(:,15) = tempVar3;
     
     beamRotation(row1,13) = beamRotation(row1,13) - 360;
     %beamRotation(row2,14) = beamRotation(row2,14) - 360;
+    beamRotation(row3,15) = beamRotation(row3,15) - 360;
     
     
     if ProcessShearTab == 2 || ProcessShearTab == 4
@@ -426,7 +533,7 @@ if ProcessBeamRotation == true
     dx2  = (dx21 + dx22)./2;
     
     beamRotation(:,17) = (dx1 + dx2)./h1WP;
-    
+    %{
     lpdx11 = lp(:,1) - mean(lp(:,1));
     lpdx21 = lp(:,3) - mean(lp(:,3));
     lpdx1 = (lpdx11 + lpdx21)./2;
@@ -436,7 +543,7 @@ if ProcessBeamRotation == true
     lpdx2 = (lpdx12 + lpdx22)./2;
     
     beamRotation(:,18) = (lpdx1 + lpdx2)./h1LP;
-
+    %}
     clearvars beamInitialAngle1 beamInitialAngle2 beamInitialAngle3 beamInitialAngle5 beamInitialAngle6 Vi V VDot ViMag VMag pointsA pointsB tempVar pointsA2 pointsB2 tempVar2;
     disp('Beam rotations calculated.. Appending to data file.');
     if localAppend == true
@@ -634,8 +741,8 @@ if ProcessMoments == true
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% Moments calculated using LC Data %%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        distG1 = (29+(11/16)); %Dist from center of LC G1 to column face
-        distG2 = (29+(7/16)); %Dist from center of LC G2 to column face
+        distG1 = 29.0625;%(29+(11/16)); %Dist from center of LC G1 to column face
+        distG2 = 28.75;  %(29+(7/16)); %Dist from center of LC G2 to column face
         %Middle of shear tab at column flange face
         
         %Unadjusted due to rotation. From roller to column flange
@@ -1048,61 +1155,3 @@ if ProcessOutputPlots == true
         'Moment (lbf-in)', 'visible', 'grid', 'save', 'hyst-u2g3-offset');
 
 end
-
-%{
-%Numerically stable Heron's Formula to get area and from there height.
-    %requires sorting so that a >= b >= c.
-    lengthOfWPArray = size(wp,1);
-    
-    %WP Set 1
-    wp1Set      = [wp(:,1) wp(:,7) repmat(D1, [lengthOfWPArray, 1])];
-    wpArea(:,1) = heronsFormula(wp1Set);
-    %WP Set 2
-    wp2Set      = [wp(:,2) wp(:,8) repmat(D2, [lengthOfWPArray, 1])];
-    wpArea(:,2) = heronsFormula(wp2Set);
-    %WP Set 3
-    wp3Set      = [wp(:,6) wp(:,5) repmat(D3, [lengthOfWPArray, 1])];
-    wpArea(:,3) = heronsFormula(wp3Set);
-    %WP Set 4
-    % wp4cDist = sqrt(wp(50,7)^2 + wp(50,1)^2);
-    %wpArea(:,4) = heronsFormula([wp(:,12) wp(:,9) repmat(wp4cDist, [lengthOfWPArray, 1])]);
-    %WP Set 5
-    wp5Set      = [wp(:,3) wp(:,12) repmat(D5, [lengthOfWPArray, 1])];
-    wpArea(:,5) = heronsFormula(wp5Set);
-    %WP Set 6
-    %Not implemented yet
-    
-    %Calculate heigh of triangle (line perp to line c extending to vertext
-    %c)
-    wpHeight = 2.*[wpArea(:,1)./wp1Set(:,3) ...
-                   wpArea(:,2)./wp2Set(:,3) ...
-                   wpArea(:,3)./wp3Set(:,3) ...
-                   repmat(0, [lengthOfWPArray, 1]) ...
-                   wpArea(:,5)./wp5Set(:,3) ...
-                  ]; 
-    
-    %Get d, the distance from A to line segment h along line c (A on left
-    %hand side)
-    wpd2 = [(-wp1Set(:,1).^2 + wp1Set(:,2).^2 + wp1Set(:,3).^2)./(2.*wp1Set(:,3))];
-    wpd = [sqrt(wp1Set(:,2).^2 - wpHeight(:,1).^2) ...
-           sqrt(wp2Set(:,2).^2 - wpHeight(:,2).^2) ...
-           sqrt(wp3Set(:,2).^2 - wpHeight(:,3).^2) ...
-           repmat(0, [lengthOfWPArray, 1]) ...
-           sqrt(wp5Set(:,2).^2 - wpHeight(:,5).^2) ...
-          ];
-   
-    %Get coordinates of vertex C on wire pot triangles. Method used as
-    %detailed at http://paulbourke.net/geometry/circlesphere/ under
-    %"Intersection of two circles" written by Paul Bourke, 1997
-    
-    xd31 = (D1 - wpd(:,1)).*sin(wpAngles(:,2));
-    yd31 = (D1 - wpd(:,1)).*cos(wpAngles(:,2));
-    
-    x311 = yd31 + wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
-    x312 = yd31 - wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
-    
-    y311 = wpHeight(:,1) + wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
-    y312 = wpHeight(:,1) - wpHeight(:,1).*((wp41Pos(2) - wp11Pos(2))./D1);
-    wpx = [];
-    wpy = [];
-%}
