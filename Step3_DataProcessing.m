@@ -3,7 +3,7 @@ close all
 clear
 
 format long;
-s
+
 global ProcessRealName %So we can pick this up in function calls
 global ProcessCodeName %So we can pick this up in function calls
 global ProcessFileName %So we can pick this up in function calls
