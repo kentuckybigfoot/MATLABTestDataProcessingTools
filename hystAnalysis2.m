@@ -4,14 +4,14 @@ ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Res
 ProcessFileName              = 'FS Testing - ST3 - Test 2 - 08-24-16';
 
 ProcessFileName = fullfile(ProcessFilePath, sprintf('[Filter]%s.mat',ProcessFileName));
+%{
+load(ProcessFileName,'wp','NormTime','moment','beamRotation')
 
-%load(ProcessFileName,'wp','NormTime','moment','beamRotation')
-
-%wp = downsample(wp,4);
-%NormTime = downsample(NormTime,4);
-%moment = downsample(moment(:,7),4);
-%beamRotation = downsample(beamRotation(:,13),4);
-
+wp = downsample(wp,4);
+NormTime = downsample(NormTime,4);
+moment = downsample(moment(:,7),4);
+beamRotation = downsample(beamRotation(:,13),4);
+%}
 [aMaxTabDisp aMinTabDisp] = peakdet(wp(:,15), 0.0625);
 
 %Straight Line Portions
@@ -151,16 +151,37 @@ disp('DO ACTUAL WORK');
 
 [nrows, ncols] = size(m, 'pointList');
 
-for o = 1:5000:nrows/1000
-    y = moment(m.pointList(o,2):m.pointList(o,3));
-    x = beamRotation(m.pointList(o,2):m.pointList(o,3));
-    X = [ones(length(x),1) x];
-    regre = X\y;
+for o = 0:10000:nrows-mod(nrows,10000)
     
-    m.pointList(o,4:5) = [regre(1) regre(2)];
-    m.pointList(o,6) = 1 - sum((y - X*regre).^2)/sum((y - mean(y)).^2); 
+    if o == nrows-mod(nrows,10000)
+        flag = mod(nrows,10000);
+    else 
+        flag = 0;
+    end 
+    
+    pointListStack1 = zeros(10000+flag,1);
+    pointListStack2 = zeros(10000+flag,1);
+    pointListStack3 = zeros(10000+flag,1);
+    pointListStack4 = zeros(10000+flag,1);
+    pointListStack5 = zeros(10000+flag,1);
+    
+    pointListStack1(:,1) = m.pointList(o+1:o+10000+flag,2);
+    pointListStack2(:,1) = m.pointList(o+1:o+10000+flag,3);
+    %{
+    parfor p = 1:1:size(pointListStack1,1)
+        y = moment(pointListStack1(p):pointListStack2(p));
+        x = beamRotation(pointListStack1(p):pointListStack2(p));
+        X = [ones(length(x),1) x];
+        regre = X\y;
+        pointListStack3(p) = regre(1);
+        pointListStack4(p) = regre(2);
+        pointListStack5(p) = 1 - sum((y - X*regre).^2)/sum((y - mean(y)).^2);
+    end
+    
+    m.pointList(o+1:o+10000,4:6) = [pointListStack3 pointListStack4 pointListStack5];
+    %}
 end
-    
+%}    
 
 %%%%%%%%% WORKS FOR FIRST
 %{
