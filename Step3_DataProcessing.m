@@ -270,17 +270,17 @@ if ProcessWPCoords == true
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %WP G1 Top
-    coordAngles(:,1) = atan2((wp11Pos(2)-wp41Pos(2)),(wp11Pos(1)-wp41Pos(1))) - wpAngles(:,2);
+    coordAngles(:,1) = atan2((wp11Pos(2)-wp41Pos(2)),abs(wp11Pos(1)-wp41Pos(1))) - wpAngles(:,2);
     x3Loc(:,1) = wp(:,7).*cos(coordAngles(:,1));
-    x3Glo(:,1) = wp41Pos(1) + x3Loc(:,1);
+    x3Glo(:,1) = x3Loc(:,1) - wp41Pos(1);
     
     y3Loc(:,1) = (wp11Pos(2)-wp41Pos(2)) + (wp(:,7).*sin(coordAngles(:,1)));
     y3Glo(:,1) = (wp11Pos(2) - (wp11Pos(2)-wp41Pos(2))) + y3Loc(:,1);
     
     %WP G2 Top
-    coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
+    coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),abs(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
     x3Loc(:,2) = wp(:,8).*cos(coordAngles(:,2));
-    x3Glo(:,2) = wp42Pos(1) + x3Loc(:,2);
+    x3Glo(:,2) = x3Loc(:,2) - wp42Pos(1);
     
     y3Loc(:,2) = (wp42Pos(2)-wp12Pos(2)) + (wp(:,8).*sin(coordAngles(:,2)));
     y3Glo(:,2) = wp12Pos(2) + y3Loc(:,2);
