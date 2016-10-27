@@ -10,11 +10,11 @@ global ProcessFileName %So we can pick this up in function calls
 global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
-ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST1 - 06-27-16\';
-ProcessFileName              = 'FS Testing - ST1 - Test 6 - 06-27-16';
-ProcessRealName              = 'Full Scale Test 3 - ST1 - 05-24-16';
+ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST3 - 08-24-16\';
+ProcessFileName              = 'FS Testing - ST3 - Test 2 - 08-24-16';
+ProcessRealName              = 'Full Scale Test 4 - ST1 - 05-24-16';
 ProcessCodeName              = 'FST-ST2-May20-2';
-ProcessShearTab              = '1'; %1, 2, 3, or 4
+ProcessShearTab              = '3'; %1, 2, 3, or 4
 runParallel                  = true;
 localAppend                  = true;
 ProcessConsolidateSGs        = true;
@@ -27,7 +27,7 @@ ProcessWPCoords              = true;
 ProcessSlip                  = false;%true;
 ProcessLPs                   = true;
 processIMU                   = false;
-ProcessBeamRotation          = true;
+ProcessBeamRotation          = false;
 ProcessStrainProfiles        = true;
 ProcessCenterOfRotation      = false;
 ProcessForces                = true;
@@ -74,7 +74,7 @@ wp72Pos = wpPos(14,:);
 D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
 D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
 D3 = 4; %WP group measuring bottom global position
-D4 = (3 + (7/8)); %WP group measuring top global position
+D4 = 3.8925; %WP group measuring top global position
 D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
 D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 
@@ -737,12 +737,12 @@ if ProcessMoments == true
         momentRegBFFD(:,2) = (2/3)*stMidHeight*modulus*(sgRegBFFD(:,5).^2)*gaugeLength(1)*gaugeWidth(1);
         momentRegBFFD(:,3) = momentRegBFFD(:,1) + momentRegBFFD(:,2);
         
-        
+    end
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% Moments calculated using LC Data %%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        distG1 = 29.0625;%(29+(11/16)); %Dist from center of LC G1 to column face
-        distG2 = 28.75;  %(29+(7/16)); %Dist from center of LC G2 to column face
+        distG1 = 29.25; %28.9375;%(29+(11/16)); %Dist from center of LC G1 to column face
+        distG2 = 29.0; %29.125;  %(29+(7/16)); %Dist from center of LC G2 to column face
         %Middle of shear tab at column flange face
         
         %Unadjusted due to rotation. From roller to column flange
@@ -759,11 +759,12 @@ if ProcessMoments == true
         %Need to implement. Will require measuring distance from center of
         %LCs to column. Will also have to take into count translation of
         %the beam/column.
-    end
+
     clearvars gaugeLength gaugeWidth stMidHeight x topLength botLength strainTop strainTop1 strainBot strainBot1 elongationTop elongationTop1 elongationBot elongationBot1 x1 x2
     if localAppend == true
         save(ProcessFileName, 'moment', '-append');
-    end
+    end  
+    
     %}
 end
 
