@@ -1,6 +1,6 @@
 function filterGUI
 
-filename = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST1 - 06-22-16\[Filter]FS Testing - ST1 - Test 6 - 06-22-16.mat';
+filename = 'I:\FS Testing -ST3 - 08-18-16\[Filter]FS Testing - ST3 - Test 9 - 08-18-16.mat';
 
 d1 = load(filename, 'NormTime');
 
@@ -23,10 +23,10 @@ recStr  = [];
 t     = d1.NormTime;                 % Sample Time
 L     = length(t);                  % Length of signal
 fs    = 1/(t(2)-t(1));              % Sampling frequency
-Fpass = 0.00000001;
+Fpass = 0;%0.0028*2*(1/fs);
 Fstop = 0;%0.00857*2*(1/fs);
-Ap    = 0.0001;
-Ast   = 0.001;
+Ap    = 0;%0.00000001;0
+Ast   = 0;%0.0000001;
 
 %,'outerposition', [0 0 1 1]2
 filterGUIFFTFig = figure('Visible','on','Position',[0 0 1400 1000], 'CloseRequestFcn', @clearData);
@@ -78,7 +78,7 @@ filterControlTextG1  = uicontrol('Parent', filterGUIFig, 'Style','text','String'
 filterDataFilteredG1 = uibuttongroup('Parent', filterGUIFig, 'Tag', '1', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 810 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
 r1G1 = uicontrol(filterDataFilteredG1,'Style', 'radiobutton', 'String','On', 'Position', [0 0 50 15], 'HandleVisibility','off');
 r2G1 = uicontrol(filterDataFilteredG1,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position', [50 0 50 15], 'HandleVisibility','off');
-c1G1 = uicontrol(filterDataFilteredG1,'Style', 'checkbox', 'String', 'Active', 'Tag', '1', 'Value', 1, 'Position', [100 0 50 15], 'HandleVisibility','off', 'callback', @filterChangeFocus);
+c1G1 = uicontrol(filterDataFilteredG1,'Style', 'checkbox', 'String', 'Active', 'Tag', '1', 'Position', [100 0 50 15], 'HandleVisibility','off', 'callback', @filterChangeFocus);
               
 filterControlTextG2  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 2', 'Position',[1050,780,60,15]);
 filterDataFilteredG2 = uibuttongroup('Parent', filterGUIFig, 'Tag', '2', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 780 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
@@ -105,16 +105,16 @@ r2G5 = uicontrol(filterDataFilteredG5,'Style', 'radiobutton', 'String', 'Off', '
 c1G5 = uicontrol(filterDataFilteredG5,'Style', 'checkbox', 'String','Active', 'Tag', '5', 'Position',[100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
 
 filterControlText1  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'FPass', 'Position', [1050,650,60,15]);
-filterFPassBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Fpass', 'Style', 'edit', 'String', '0.00000001', 'Position', [1115,650,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+filterFPassBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Fpass', 'Style', 'edit', 'String', '0', 'Position', [1115,650,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
 
 filterControlText2  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'FStop', 'Position',[1050,610,60,15]);
 filterFStopBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Fstop', 'Style', 'edit', 'String', '0', 'Position', [1115,610,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
 
 filterControlText3  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Ap', 'Position',[1050,570,60,15]);
-filterFApBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ap', 'Style', 'edit', 'String', '0.0001', 'Position', [1115,570,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+filterFApBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ap', 'Style', 'edit', 'String', '0', 'Position', [1115,570,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
 
 filterControlText4  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Ast', 'Position',[1050,530,60,15]);
-filterFAstBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ast', 'Style', 'edit', 'String', '0.001', 'Position', [1115,530,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+filterFAstBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ast', 'Style', 'edit', 'String', '0', 'Position', [1115,530,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
 
 filterTable  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Reccomended Frequencies from FFT', 'Position',[1050,500,200,15]);
 filterTableElements = uitable('Parent', filterGUIFig, 'Position', [1060,275,185,202],...

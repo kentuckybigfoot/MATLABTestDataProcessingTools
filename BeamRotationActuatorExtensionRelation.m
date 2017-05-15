@@ -4,9 +4,9 @@ close all
 
 %make matfile object due to huge file sizes
 genDir = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\';
-dir1 = 'FS Testing -ST1 - 06-27-16';
+dir1 = 'FS Testing -ST4 - 07-14-16';
 
-m1 = matfile(fullfile(genDir,dir1,'[Filter]FS Testing - ST1 - Test 6 - 06-27-16.mat'));
+m1 = matfile(fullfile(genDir,dir1,'[Filter]FS Testing - ST4 - Test 5 - 07-14-16.mat'));
 
 %Load NormTime into memory so we do not have problems with descritizing.
 NormTime = m1.NormTime;

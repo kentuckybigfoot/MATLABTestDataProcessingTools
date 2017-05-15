@@ -27,6 +27,11 @@ list2 = {'FS Testing -ST2 - 06-13-16', 'FS Testing -ST1 - 06-15-16', ...
          'FS Testing -ST1 - 07-07-16'};
      
 list3 = {'FS Testing -ST4 - 07-12-16', 'FS Testing -ST4 - 07-14-16', ...
+         'FS Testing -ST4 - 07-20-16', 'FS Testing -ST4 - 07-21-16'};
+     
+list4 = {'FS Testing -ST3 - 07-29-16', 'FS Testing -ST3 - 08-11-16', ...
+         'FS Testing -ST3 - 08-14-16', 'FS Testing -ST3 - 08-18-16', ...
+         'FS Testing -ST3 - 08-24-16', 'FS Testing -ST3 - 09-07-16', ...
          };
      
 if any(cell2mat(regexp(ProcessFileName,list1)))
@@ -86,6 +91,22 @@ if any(cell2mat(regexp(ProcessFileName,list3)))
     wp72Pos = [0.39 21.25+2.175+(5.07-2.71654)];           %Same as WP1-2 in theory
 end
     
+if any(cell2mat(regexp(ProcessFileName,list4)))
+    wp11Pos = [-0.39 (48.25+2.175+29.625)-((5.07-2.71654)+0.125)]; %
+    wp12Pos = [-0.39 48.25+2.175+(5.07-2.71654)]; %
+    wp21Pos = [13.875-(0.125+(5.07-2.71654)) 57+14.875+0.39];  %Same as WP4-1 in theory
+    wp22Pos = [13.875-(0.125+(5.07-2.71654)) 57+0.39];           %Same as WP4-2 in theory
+    wp31Pos = [0 0];
+    wp32Pos = [0 0];
+    wp41Pos = [13.875-(0.125+(5.07-2.71654)) 57+14.875+0.39]; %
+    wp42Pos = [13.875-(0.125+(5.07-2.71654)) 57+0.39]; %
+    wp51Pos = [(3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
+    wp52Pos = [(3.9375+3.0625+1.375+0.50) (48.5+2.175+28.4375+2+(14.9375-0.8125)+(5.07-2.71654))];
+    wp61Pos = [0 0];
+    wp62Pos = [0 0];
+    wp71Pos = [-0.39 (48.25+2.175+29.625)-((5.07-2.71654)+0.125)]; %Same as WP1-1 in theory
+    wp72Pos = [-0.39 48.25+2.175+(5.07-2.71654)];         %Same as WP1-2 in theory
+end
 
 wpPos = [wp11Pos; wp12Pos; wp21Pos; wp22Pos; wp31Pos; wp32Pos; wp41Pos; wp42Pos; wp51Pos; wp52Pos; wp61Pos; wp62Pos; wp71Pos; wp72Pos];
 end
