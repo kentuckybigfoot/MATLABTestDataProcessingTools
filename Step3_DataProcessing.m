@@ -11,8 +11,8 @@ global ProcessFilePath  %So we can pick this up in function calls
 
 %Process Mode Variables
 ProcessFilePath              = 'C:\Users\clk0032\Dropbox\Friction Connection Research\Full Scale Test Data\FS Testing -ST3 - 08-24-16\';
-ProcessFileName              = 'FS Testing - ST3 - Test 2 - 08-24-16';
-ProcessRealName              = 'Full Scale Test 4 - ST1 - 05-24-16';
+ProcessFileName              = 'FS Testing - ST3 - Test 6 - 08-24-16';
+ProcessRealName              = 'Full Scale Test 7 - ST1 - 05-24-16';
 ProcessCodeName              = 'FST-ST2-May20-2';
 ProcessShearTab              = '3'; %1, 2, 3, or 4
 runParallel                  = true;
@@ -26,29 +26,19 @@ ProcessWPPropeties           = true;
 ProcessWPCoords              = true;
 ProcessSlip                  = false;%true;
 ProcessLPs                   = true;
-processIMU                   = false;
-ProcessBeamRotation          = false;
-ProcessStrainProfiles        = true;
+ProcessBeamRotation          = true;
+ProcessStrainProfiles        = false;
 ProcessCenterOfRotation      = false;
-ProcessForces                = true;
+ProcessForces                = false;
 ProcessMoments               = true;
 ProcessEQM                   = true;
 ProcessGarbageCollection     = false;
 ProcessOutputPlots           = false;
 
-%Load data. Checks if IMU data exists and processes it if so. This is more
-%of a legacy feature since IMU was not added until months after testing
-%began.
-IMUDataFileName = fullfile(ProcessFilePath,sprintf('[ProcRotationData]%s.mat',ProcessFileName));
+%Load data
 ProcessFileName = fullfile(ProcessFilePath, sprintf('[Filter]%s.mat',ProcessFileName));
 
 load(ProcessFileName);
-
-if exist(IMUDataFileName, 'file') == 2
-    load(IMUDataFileName);
-else
-    processIMU = false; %Failsafe incase trying to proccess non-exist. file
-end
 
 %Load coordinates of wire-pots. See "help wpPosition" for more information
 %on wirepot coordinates/scheme. The following lines essentially take the
@@ -80,7 +70,7 @@ D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
 
 %Basic constants
 modulus      = 29000; %Modulus of elasticity (ksi)
-boltEquation = 0.1073559499;
+boltEquation = 0.1073559499; %(uE)/lb
 gaugeLength  = [0.19685; 0.450]; %(in) which is 5 mm
 gaugeWidth   = [0.0590551; 0.180]; %(in) which is 1.5 mm
 
@@ -230,7 +220,7 @@ if ProcessWPPropeties == true
     g1 = [wp(:,7) wp(:,1) dist(:,1)];
     g2 = [wp(:,2) wp(:,8) dist(:,2)];
     g3 = [wp(:,5) wp(:,6) dist(:,3)];
-    g4 = [wp(:,9) wp(:,14) dist(:,4)];
+    g4 = [wp(:,14) wp(:,9) dist(:,4)];
     g5 = [wp(:,3) wp(:,12) dist(:,5)];
     g6 = [wp(:,13) wp(:,4) dist(:,6)];
     
@@ -270,36 +260,36 @@ if ProcessWPCoords == true
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %WP G1 Top
-    coordAngles(:,1) = atan2((wp11Pos(2)-wp41Pos(2)),abs(wp11Pos(1)-wp41Pos(1))) - wpAngles(:,2);
-    x3Loc(:,1) = wp(:,7).*cos(coordAngles(:,1));
-    x3Glo(:,1) = x3Loc(:,1) - wp41Pos(1);
+    coordAngles(:,1) = pi - (atan2((wp71Pos(2)-wp21Pos(2)),wp21Pos(1)-wp71Pos(1)) + wpAngles(:,14));
+    x3Loc(:,1) = -1.*wp(:,12).*cos(coordAngles(:,1));
+    x3Glo(:,1) = x3Loc(:,1) + wp71Pos(1);
     
-    y3Loc(:,1) = (wp11Pos(2)-wp41Pos(2)) + (wp(:,7).*sin(coordAngles(:,1)));
-    y3Glo(:,1) = (wp11Pos(2) - (wp11Pos(2)-wp41Pos(2))) + y3Loc(:,1);
+    y3Loc(:,1) = wp(:,12).*sin(coordAngles(:,1));
+    y3Glo(:,1) = wp71Pos(2)-y3Loc(:,1);
     
     %WP G2 Top
-    coordAngles(:,2) = atan2((wp42Pos(2)-wp12Pos(2)),abs(wp12Pos(1)-wp42Pos(1))) - wpAngles(:,4);
-    x3Loc(:,2) = wp(:,8).*cos(coordAngles(:,2));
-    x3Glo(:,2) = x3Loc(:,2) - wp42Pos(1);
+    coordAngles(:,2) = atan2((wp22Pos(2) - wp72Pos(2)),(wp22Pos(1) - wp72Pos(1))) + wpAngles(:,16);
+    x3Loc(:,2) = wp(:,13).*cos(coordAngles(:,2));
+    x3Glo(:,2) = x3Loc(:,2) + wp72Pos(1);
     
-    y3Loc(:,2) = (wp42Pos(2)-wp12Pos(2)) + (wp(:,8).*sin(coordAngles(:,2)));
-    y3Glo(:,2) = wp12Pos(2) + y3Loc(:,2);
+    y3Loc(:,2) = (wp(:,13).*sin(coordAngles(:,2)));
+    y3Glo(:,2) = wp72Pos(2) + y3Loc(:,2);
     
     %WP G1 Bottom
-    coordAngles(:,3) = atan2((wp71Pos(2)-wp21Pos(2)),abs(wp71Pos(1)-wp21Pos(1))) - wpAngles(:,14);
-    x3Loc(:,3) = wp(:,3).*cos(coordAngles(:,3));
-    x3Glo(:,3) =  x3Loc(:,3) - wp21Pos(1);
+    coordAngles(:,3) = pi - (atan2((wp11Pos(2)-wp41Pos(2)),wp41Pos(1)-wp11Pos(1)) + wpAngles(:,2));
+    x3Loc(:,3) = -1.*wp(:,1).*cos(coordAngles(:,3));
+    x3Glo(:,3) =  x3Loc(:,3) + wp11Pos(1);
     
-    y3Loc(:,3) = (wp71Pos(2)-wp21Pos(2)) + (wp(:,3).*sin(coordAngles(:,3)));
-    y3Glo(:,3) = (wp71Pos(2) - (wp71Pos(2)-wp21Pos(2))) + y3Loc(:,3);
+    y3Loc(:,3) = wp(:,1).*sin(coordAngles(:,3));
+    y3Glo(:,3) = wp11Pos(2)-y3Loc(:,3);
     
     %WP G2 Bottom
-    coordAngles(:,4) = atan2((wp22Pos(2)-wp72Pos(2)),abs(wp72Pos(1)-wp22Pos(1))) - wpAngles(:,16);
-    x3Loc(:,4) = wp(:,4).*cos(coordAngles(:,4));
-    x3Glo(:,4) = x3Loc(:,4) - wp22Pos(1);
+    coordAngles(:,4) = atan2((wp42Pos(2) - wp12Pos(2)),(wp42Pos(1) - wp12Pos(1))) + wpAngles(:,4);
+    x3Loc(:,4) = wp(:,2).*cos(coordAngles(:,4));
+    x3Glo(:,4) = x3Loc(:,4) + wp12Pos(1);
     
-    y3Loc(:,4) = (wp22Pos(2)-wp72Pos(2)) + (wp(:,4).*sin(coordAngles(:,4)));
-    y3Glo(:,4) = wp22Pos(2) + y3Loc(:,4);
+    y3Loc(:,4) = (wp(:,2).*sin(coordAngles(:,4)));
+    y3Glo(:,4) = wp12Pos(2) + y3Loc(:,4);
     
     %WP G5 at Top of Column (Global Positioning)
     %Using WP5-1
@@ -392,34 +382,6 @@ if ProcessLPs == true
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS IMU DATA                                                         %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if processIMU == true
-    %Convert all DAQ recorded ADC voltages to time in units of milliseconds
-    disp('Converting DAC output into time data...');
-    for r = 1:1:length(A)
-        DACTime(r,1) = convertDACToTime([A(r) B(r) C(r) D(r) E(r) F(r) G(r) H(r)]);
-    end
-    disp('Process complete.');
-
-    %Associate timestamp data outputted from DAC with DAQ time data. This is
-    %done by taking DACTime, cleaning it up, and then outputting what row of
-    %IMU data variables correspondes with each row of NormTime data from the
-    %DAQ.
-    disp('Obtaining indexes of data to relate IMU time to DAQ time...');
-    DACTimeIndex = associateDACTime(DACTime, MilliTime);
-    disp('Process complete.');
-
-    %Produce IMU data with time in sync with DAQ time. This outputs yaw,
-    %pitch, and roll, respectively, for both IMUs in units of radians.
-    %Yaw (aLPha) (CC Z Axis)
-    %Pitch (beta) (CC Y Axis)
-    %Roll (gamma) (CC X Axis)
-    IMUA = [anglesA(DACTimeIndex,1) anglesA(DACTimeIndex,2) anglesA(DACTimeIndex,3)];
-    IMUB = [anglesB(DACTimeIndex,1) anglesB(DACTimeIndex,2) anglesB(DACTimeIndex,3)];    
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %CALCULATE ROTATION USING WIREPOT DATA                                    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ProcessBeamRotation == true
@@ -466,24 +428,31 @@ if ProcessBeamRotation == true
     %and
     %http://www.mathworks.com/matlabcentral/fileexchange/26186-absolute-orientation-horn-s-method
     
-    %Init posistion
-    pointsA = [[mean(x3Glo(:,1)); mean(y3Glo(:,1))] [mean(x3Glo(:,2)); mean(y3Glo(:,2))] [mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]]; 
-    %pointsA2 = [[mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]];
-    pointsA3 = [[mean(x3Glo(:,5)); mean(y3Glo(:,5))] [mean(x3Glo(:,6)); mean(y3Glo(:,6))] [wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)]]; 
+    d = sqrt((wp51Pos(1)-wp52Pos(1))^2 + (wp51Pos(2)-wp52Pos(2))^2);
+    a = (wp(:,9).^2 - wp(:,14).^2 + d^2)/(2*d);
+    x2 = wp51Pos(1) + a*(wp52Pos(1)-wp51Pos(1))/d;
+    y2 = wp51Pos(2) + a*(wp52Pos(2)-wp51Pos(2))/d;
+    x3 = [x2 + wpHeight(:,4).*(wp52Pos(2)-wp51Pos(2))/d, x2 - wpHeight(:,4).*(wp52Pos(2)-wp51Pos(2))/d];
+    y3 = [y2 + wpHeight(:,4).*(wp52Pos(1)-wp51Pos(1))/d, y2 - wpHeight(:,4).*(wp52Pos(1)-wp51Pos(1))/d];
     
+    %Init posistion
+    pointsA = [[x3Glo(1,1); y3Glo(1,1)] [x3Glo(1,2); y3Glo(1,2)] [x3Glo(1,3); y3Glo(1,3)] [x3Glo(1,4); y3Glo(1,4)]]; 
+    %pointsA2 = [[mean(x3Glo(:,3)); mean(y3Glo(:,3))] [mean(x3Glo(:,4)); mean(y3Glo(:,4))]];
+    %pointsA3 = [[x3Glo(1,5); y3Glo(1,5)] [x3Glo(1,6); y3Glo(1,6)] [wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)]]; 
+    pointsA3 = [[wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)] [x2(1); y2(1)] [x3(1,1); y3(1,1)]]; 
     
     %To prevent broadcast variables and increase speed
     x1 = x3Glo(:,1); x2 = x3Glo(:,2); x3 = x3Glo(:,3); x4 = x3Glo(:,4);
     y1 = y3Glo(:,1); y2 = y3Glo(:,2); y3 = y3Glo(:,3); y4 = y3Glo(:,4);
     
-    x13 = x3Glo(:,5); x23 = x3Glo(:,6);
-    y13 = y3Glo(:,5); y23 = y3Glo(:,6);
+    x13 = x2; x23 = x3(:,1);
+    y13 = y2; y23 =y3(:,1);
     tic
     parfor r = 1:1:size(wp,1);
         %Current Position
         pointsB = [[x1(r); y1(r)] [x2(r); y2(r)] [x3(r); y3(r)] [x4(r); y4(r)]];
         %pointsB2 = [[x3Glo(r,3); y3Glo(r,3)] [x3Glo(r,4); y3Glo(r,4)]];
-        pointsB3 = [[x13(r); y13(r)] [x23(r); y23(r)] [wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)]];
+        pointsB3 = [[wp51Pos(1); wp51Pos(2)] [wp52Pos(1); wp52Pos(2)] [x13(r); y13(r)] [x23(r); y23(r)] ];
         
         rotInfo(r) = [absor(pointsA, pointsB)];
         %rotInfo2(r) = [absor(pointsA2, pointsB2)];
