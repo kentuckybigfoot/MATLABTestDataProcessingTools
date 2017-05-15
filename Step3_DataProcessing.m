@@ -15,7 +15,6 @@ ProcessFileName              = 'FS Testing - ST3 - Test 6 - 08-24-16';
 ProcessRealName              = 'Full Scale Test 7 - ST1 - 05-24-16';
 ProcessCodeName              = 'FST-ST2-May20-2';
 ProcessShearTab              = '3'; %1, 2, 3, or 4
-runParallel                  = true;
 localAppend                  = true;
 ProcessConsolidateSGs        = true;
 ProcessConsolidateWPs        = true;
