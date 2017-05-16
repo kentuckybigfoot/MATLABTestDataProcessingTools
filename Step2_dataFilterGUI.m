@@ -1,6 +1,6 @@
 function filterGUI
 
-filename = 'I:\FS Testing -ST3 - 08-18-16\[Filter]FS Testing - ST3 - Test 9 - 08-18-16.mat';
+filename = 'C:\BFFD Data\Shear Tab 1\FS Testing -ST1 - 06-15-16\[Filter]FS Testing - ST1 - Test 1 - 06-15-16.mat';
 
 d1 = load(filename, 'NormTime');
 
