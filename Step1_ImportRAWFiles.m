@@ -11,10 +11,10 @@ close all
 addpath(genpath('libImport'));
 
 %File import definitions
-RAWDirectory     = 'C:\Users\Christopher\Desktop\RAW';
-saveDir          = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools';
-saveName         = 'Testify';%FS Testing - ST2 - Test 1 - 04-14-16';
-rangeToImport    = 2000;
+RAWDirectory     = '';
+saveDir          = '';
+saveName         = '';
+rangeToImport    = 1000;
 decimationFactor = 0;
 decimateType     = 'fir';
 
@@ -24,7 +24,7 @@ decimateType     = 'fir';
 
 numberOfFilesToProcess = size(filelist,1);
 
-for r = 1:5%numberOfFilesToProcess
+for r = 1:numberOfFilesToProcess
     p(r) = PI660RawToM(fullfile(RAWDirectory, filelist(r,:)));
     p(r).DecimateBy = decimationFactor;
     p(r).decimateType = decimateType;
@@ -54,7 +54,7 @@ clearvars RAWDirectory saveDir saveName default lookFor decimationFactor decimat
 
 lastTime = 0;
 tic
-for r = 1:5%numberOfFilesToProcess
+for r = 1:numberOfFilesToProcess
     p(r).getRawData();
     p(r).ScanDataDump();
     p(r).SelectChannels();

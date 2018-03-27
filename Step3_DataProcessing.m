@@ -14,7 +14,7 @@ format long;
 addpath(genpath('libCommonFxns'))
 
 %Include external functions
-addpath(genpath('libExternals'))
+addpath(genpath('libExternalFxns'))
 
 %Include subroutines
 addpath(genpath('dataProcessingSubroutines'))
