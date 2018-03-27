@@ -373,7 +373,7 @@ classdef PI660RawToM < handle
               [row(s).rows,~] = find(this.ScanList(:,1) == uniqueBlocks(s));
           end
           
-          for s = 1:55
+          for s = 1:this.NumberOfChannels
               this.ScanList(row(s).rows,1) = s;
           end
           

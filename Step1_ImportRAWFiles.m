@@ -1,6 +1,7 @@
 %To-do
 %Add toolbox checks
 %Document
+%Fix limitation of Run parameter posistion being set in findRawsInDirectory()
 
 %Clear all isn't recommended, but is used to prevent any stragglers
 clear all
@@ -10,19 +11,20 @@ close all
 addpath(genpath('libImport'));
 
 %File import definitions
-RAWDirectory     = 'C:\Users\Christopher\Desktop\Random Raw\';
-saveDir          = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\MassDataImport';
-saveName         = 'Test3.mat';
-decimationFactor = 1000;
+RAWDirectory     = 'C:\Users\Christopher\Desktop\RAW';
+saveDir          = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools';
+saveName         = 'Testify';%FS Testing - ST2 - Test 1 - 04-14-16';
+rangeToImport    = 2000;
+decimationFactor = 0;
 decimateType     = 'fir';
 
 [directoryList, runRanges] = findRawsInDirectory(RAWDirectory);
 
-[filelist,runNumbers] = getRawsInRange(2000, directoryList, runRanges);
+[filelist,runNumbers] = getRawsInRange(rangeToImport, directoryList, runRanges);
 
 numberOfFilesToProcess = size(filelist,1);
 
-for r = 1:numberOfFilesToProcess
+for r = 1:5%numberOfFilesToProcess
     p(r) = PI660RawToM(fullfile(RAWDirectory, filelist(r,:)));
     p(r).DecimateBy = decimationFactor;
     p(r).decimateType = decimateType;
@@ -51,7 +53,8 @@ importManifest = importManifestHandler(3, m, numberOfFilesToProcess);
 clearvars RAWDirectory saveDir saveName default lookFor decimationFactor decimateType
 
 lastTime = 0;
-for r = 1:numberOfFilesToProcess
+tic
+for r = 1:5%numberOfFilesToProcess
     p(r).getRawData();
     p(r).ScanDataDump();
     p(r).SelectChannels();
@@ -70,16 +73,16 @@ for r = 1:numberOfFilesToProcess
     
     %Correct NormTime which resets to zero at each import.
     m.NormTime(estRanges(r,1):estRanges(r,2),1) = dataFull(1).Time + lastTime;
-    lastTime = lastTime + dataFull(1).Time(end,1) + 0.01;
+    lastTime = lastTime + (dataFull(1).Time(end,1) + (dataFull(1).Time(end,1)-dataFull(1).Time(end-1,1)));
     
     %Garbage collection to free memory.
     clear('dataFull');
     
     %Update Import Manifest
-    importManifest(r) = importManifestHandler(1, p(1), estRanges(r,:));
+    importManifest(r) = importManifestHandler(1, p(r), estRanges(r,:));
     
     fprintf('Import and conversion %d of %d complete\n', r, numberOfFilesToProcess);
 end
-
+toc
 %Save import manifest
 importManifestHandler(2, m, importManifest);

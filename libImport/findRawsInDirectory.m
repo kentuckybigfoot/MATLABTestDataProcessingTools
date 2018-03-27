@@ -17,7 +17,7 @@ function [ directoryList,  runRanges] = findRawsInDirectory( directory )
 
     directoryList = ls(fullfile(directory,'*.raw'));
 
-    countFilesFound = length(directoryList);
+    countFilesFound = size(directoryList,1);
 
     if countFilesFound == 0
         error('No RAW files found in specified folder');
@@ -33,4 +33,3 @@ function [ directoryList,  runRanges] = findRawsInDirectory( directory )
         runRanges(r,2) = round(runRanges(r,1),roundParameter);
     end
 end
-

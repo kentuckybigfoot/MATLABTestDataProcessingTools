@@ -1,3 +1,9 @@
+%UNTITLED4 Summary of this function goes here
+%   Detailed explanation goes here
+
+%
+%   Copyright 2017-2018 Christopher L. Kerner.
+%
 clc
 close all
 clear
@@ -5,82 +11,53 @@ clear
 format long;
 
 %Include functions
-addpath('functions\')
+addpath(genpath('libCommonFxns'))
+
+%Include external functions
+addpath(genpath('libExternals'))
 
 %Include subroutines
-addpath('subroutines\')
+addpath(genpath('dataProcessingSubroutines'))
 
-global ProcessRealName %So we can pick this up in function calls
-global ProcessCodeName %So we can pick this up in function calls
-global ProcessFileName %So we can pick this up in function calls
-global ProcessFilePath  %So we can pick this up in function calls
+%%
 
-%Process Mode Variables
-ProcessFilePath              = 'C:\BFFD Data\Shear Tab 1\FS Testing -ST1 - 06-15-16';
-ProcessFileName              = 'FS Testing - ST1 - Test 1 - 06-15-16 - Copy';
-ProcessRealName              = 'Full Scale Test 7 - ST1 - 05-24-16';
-ProcessCodeName              = 'FST-ST2-May20-2';
-ProcessShearTab              = '1'; %1, 2, 3, or 4
-localAppend                  = true;
-ProcessConsolidateSGs        = true;
-ProcessConsolidateWPs        = true;
-ProcessConsolidateLPs        = true;
-ProcessConsolidateLCs        = true;
-ProcessWPAngles              = true;
+%Post-Process Component Variables
+ProcessFilePath              = 'C:\Users\Christopher\Desktop';
+ProcessFileName              = '[Filter]FS Testing - ST3 - Test 1 - 08-24-16.mat';
+ProcessShearTab              = getShearTab(ProcessFileName);
+ProcessConsolidateSGs        = false;
+ProcessConsolidateWPs        = false;
+ProcessConsolidateLCs        = false;
+ProcessConsolidateLPs        = false;
+ProcessWPAngles              = false;
 ProcessWPProperties          = true;
 ProcessWPCoords              = true;
-ProcessSlip                  = false;%true;
-ProcessConfigLPs             = true;
+ProcessConfigLPs             = false;
 ProcessBeamRotation          = true;
 ProcessStrainProfiles        = false;
 ProcessCenterOfRotation      = false;
 ProcessForces                = false;
-ProcessMoments               = true;
-ProcessEQM                   = true;
-ProcessGarbageCollection     = false;
-ProcessOutputPlots           = false;
+ProcessMoments               = false;
+ProcessEQM                   = false;
 
-%Load data
-ProcessFileName = fullfile(ProcessFilePath, sprintf('[Filter]%s.mat',ProcessFileName));
-
-load(ProcessFileName);
-
-%Load coordinates of wire-pots. See "help wpPosition" for more information
-%on wirepot coordinates/scheme. The following lines essentially take the
-%output of that function and assign it to easily read variable names.
-wpPos = wpPosition(ProcessFileName);
-
-wp11Pos = wpPos(1,:);
-wp12Pos = wpPos(2,:);
-wp21Pos = wpPos(3,:);
-wp22Pos = wpPos(4,:);
-wp31Pos = wpPos(5,:);
-wp32Pos = wpPos(6,:);
-wp41Pos = wpPos(7,:);
-wp42Pos = wpPos(8,:);
-wp51Pos = wpPos(9,:);
-wp52Pos = wpPos(10,:);
-wp61Pos = wpPos(11,:);
-wp62Pos = wpPos(12,:);
-wp71Pos = wpPos(13,:);
-wp72Pos = wpPos(14,:);
-
-%Get distances between wirepot triangle vertices A and B (line c).
-D1 = DF(wp41Pos(1,1), wp11Pos(1,1), wp41Pos(1,2), wp11Pos(1,2)); %Top group 1
-D2 = DF(wp42Pos(1,1), wp12Pos(1,1), wp42Pos(1,2), wp12Pos(1,2)); %Bot group 1
-D3 = 4; %WP group measuring bottom global position
-D4 = 3.8925; %WP group measuring top global position
-D5 = DF(wp21Pos(1,1), wp71Pos(1,1), wp21Pos(1,2), wp71Pos(1,2)); %Top group 2
-D6 = DF(wp22Pos(1,1), wp72Pos(1,1), wp22Pos(1,2), wp72Pos(1,2)); %Bot group 2
-
-%Basic constants
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Basic constants
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 modulus      = 29000; %Modulus of elasticity (ksi)
-boltEquation = 0.1073559499; %(uE)/lb
 gaugeLength  = [0.19685; 0.450]; %(in) which is 5 mm
 gaugeWidth   = [0.0590551; 0.180]; %(in) which is 1.5 mm
 
+%Strain gauge instrumented bolt calibration constant
+if ProcessShearTab < 3
+    %Bolt 1 used in connection 1 & 2
+    boltEquation = 0.1073559499; %(uE)/lb
+else
+    %Bolt 2 used in connection 1 & 2
+    boltEquation = 0.1094678767; %(uE)/lb
+end
+
 %Shear tab coordinate system and bolt hole location information.
-if ProcessShearTab == '2' || ProcessShearTab == '4'
+if ProcessShearTab == 2 || ProcessShearTab == 4
     stMidHeight = 5.75;
     yGaugeLocations = [4.5; 1.5; -1.5; -4.5; -10];
     yGaugeLocationsExpanded = [stMidHeight; 4.5; 1.5; -1.5; -4.5; -stMidHeight; -10];
@@ -90,125 +67,139 @@ else
     yGaugeLocationsExpanded = [stMidHeight; 3; 0; -3; -stMidHeight; -9];
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY                     %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-consolidateSGs
 
-if ProcessConsolidateSGs == true & localAppend == true
-    save(ProcessFileName, 'sg', '-append');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ProcessFileName = fullfile(ProcessFilePath,ProcessFileName);
+m = matfile(ProcessFileName, 'Writable', true);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Load coordinates of wire-pots.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+wpPosition;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Get distances between wirepot triangle vertices A and B (line c).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+distBetweenWPs = [ ...
+    DF(WPPos(7,1), WPPos(1,1), WPPos(7,2), WPPos(1,2)); ...
+    DF(WPPos(8,1), WPPos(2,1), WPPos(8,2), WPPos(2,2)); %Bot group 1 ...
+    4; %WP for bot. col. global position ...
+    3.8925; %WP for top. col. global position ...
+    DF(WPPos(3,1), WPPos(13,1), WPPos(3,2), WPPos(13,2)); %Top group 2 ...
+    DF(WPPos(4,1), WPPos(14,1), WPPos(4,2), WPPos(14,2)); %Bot group 2 ...
+    ];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CONSOLIDATE STRAIN GAUGE VARIABLES INTO SINGLE ARRAY
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ProcessConsolidateSGs == true
+    disp('Begin consolidation of SG variables.')
+    consolidateSGs
+    disp('Consolidation of SG variables complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CONSOLIDATE WIRE POTENTIOMETER VARIABLES INTO SINGLE ARAY                %
+%CONSOLIDATE WIRE POTENTIOMETER VARIABLES INTO SINGLE ARRAY
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-consolidateWPs
-
-if ProcessConsolidateWPs == true & localAppend == true
-    save(ProcessFileName, 'wp', '-append');
+if ProcessConsolidateWPs == true
+    disp('Begin consolidation of WP variables.')
+    consolidateWPs
+    disp('Consolidation of WP variables complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CONSOLIDATE LINEAR POTENTIOMETER VARIABLES INTO SINGLE ARAY              %
+%CONSOLIDATE LINEAR POTENTIOMETER VARIABLES INTO SINGLE ARRAY
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-consolidateLPs
-
-if ProcessConsolidateLPs == true & localAppend == true
-    save(ProcessFileName, 'lp', '-append');
+if ProcessConsolidateLPs == true
+    disp('Begin consolidation of LP variables.')
+    consolidateLPs
+    disp('Consolidation of LP variables complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CONSOLIDATE LOAD CELLS VARIABLES AND LOAD CELL GROUPS INTO SINGLE ARRAY  %
+% CONSOLIDATE LOAD CELLS VARIABLES AND LOAD CELL GROUPS INTO SINGLE ARRAY
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-consolidateLCs
-
-if ProcessConsolidateLCs == true & localAppend == true
-    save(ProcessFileName, 'lc', '-append');
+if ProcessConsolidateLCs == true
+    disp('Begin consolidation of LC variables.')
+	consolidateLCs
+    disp('Consolidation of LC variables complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE EACH ANGLE OF WIRE POTENTIOMETER TRIANGLES                     %
+% CALCULATE EACH ANGLE OF WIRE POTENTIOMETER TRIANGLES                     %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-calculateWPAngles
-
-if ProcessWPAngles == true & localAppend == true
-    save(ProcessFileName, 'wpAngles', 'wpAnglesDeg', '-append');
+if ProcessWPAngles == true
+    disp('Begin calculating WP Angles')
+    calculateWPAngles
+    disp('WP angles calculations complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE VARIOUS PROPERTIES OF WIRE POT TRIANGLES                       %
+% CALCULATE VARIOUS PROPERTIES OF WIRE POT TRIANGLES                       %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-WPProperties
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE COORDINATES OF WIREPOT STRINGS                                 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-wpCoords
-
-if ProcessWPCoords == true & localAppend == true
-    save(ProcessFileName, 'x3Loc', 'y3Loc', 'x3Glo', 'y3Glo', 'x4Glo', 'y4Glo', '-append');
-    disp('Angles appended successfully.');
+if ProcessWPProperties == true
+    disp('Calculating WP properties.')
+    WPProperties
+    disp('Calculating WP properties complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CHECK FOR INDICATION OF CONNECTION SLIP                                  %
+% CALCULATE COORDINATES OF WIREPOT STRINGS                                 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%Murky concept at this point. find peaks of MTS LVDT, find zeroes between 
-%peaks, compare zero to zero at each height of the ramp inbetween to see if
-%overall coordinates of connection have changed. quantify change between
-%them.
-%May also want to look for sudden shift in force graph or overall rotation.
-%Will also eventually look for sudden jump in strain gauges.
-
-if ProcessSlip == true
-    [maxtab1 mintab1] = peakdet(wp(:,15), 0.1);
+if ProcessWPCoords == true
+    disp('Begin processing WP coordinates.')
+    wpCoords
+    disp('Processing WP coordinates complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS LP DATA                                                          %
+% (Untouched) PROCESS LP DATA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-configLPs
+%configLPs
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE ROTATION USING WIREPOT DATA                                    %
+% CALCULATE ROTATION USING WIREPOT DATA
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp('calculating beam rotation')
-calculateBeamRotation
-
-if ProcessBeamRotation == true & localAppend == true
-    save(ProcessFileName, 'beamRotation', '-append');
-end
-disp('end calc')
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS STRAIN PROFILES                                                  %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-strainProfiles
-
-if ProcessStrainProfiles == true && localAppend == true
-    save(ProcessFileName, 'strainRegression', '-append');
+if ProcessBeamRotation == true
+    disp('Calculating beam rotation.')
+    calculateBeamRotation
+    disp('Calculating beam rotation complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PROCESS FORCES FROM STRAIN GAUGES ON TEST SPECIMAN                       %
+%(Untouched) PROCESS STRAIN PROFILES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-strainForces
+%strainProfiles
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE MOMENTS FROM SENSOR DATA                                       %
+%(Untouched) PROCESS FORCES FROM STRAIN GAUGES ON TEST SPECIMAN
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-calculateMoments
+%strainForces
 
-if ProcessMoments == true & localAppend == true
-    save(ProcessFileName, 'moment', '-append');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CALCULATE MOMENTS FROM SENSOR DATA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ProcessMoments == true
+    disp('Calculating moments.')
+    calculateMoments
+    disp('Calculating moments complete.')
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%CALCULATE EQUILIBRIUM EQUATIONS                                          %
+%(Untouched) CALCULATE EQUILIBRIUM EQUATIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-calculateEQM
+%calculateEQM
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%GENERATE RELEVENT DATA PLOTS                                             %
+%(Untouched) GENERATE RELEVENT DATA PLOTS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-generatePlots
+%generatePlots
+
+clearvars ProcessConsolidateSGs ProcessConsolidateWPs ProcessConsolidateLPs ...
+	      ProcessConsolidateLCs ProcessWPAngles ProcessWPProperties ProcessWPCoords ...
+          ProcessConfigLPs ProcessBeamRotation ProcessStrainProfiles ...
+          ProcessCenterOfRotation ProcessForces ProcessMoments ProcessEQM ...
+          ProcessOutputPlots modulus boltEquation gaugeLength gaugeWidth stMidHeight ...
+          yGaugeLocations yGaugeLocationsExpanded WPPos distBetweenWPs

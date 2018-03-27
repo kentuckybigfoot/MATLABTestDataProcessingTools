@@ -1,30 +1,12 @@
-% First check if individual WP variables still exist, if they do not, do
-% not run the script.
-% Note: this is dangerous if the dataset is incomplete. No failsafes. No
-% need when the function is specific and I am tayloring data input.
-if ~exist('LP1', 'var') & ~exist('LP2', 'var') & ~exist('LP3', 'var') & ...
-   ~exist('LP4', 'var')
-    ProcessConsolidateLPs = false;
-end
+sizeOfLPRecord = size(m,'LP1');
+m.lp(sizeOfLPRecord(1),4) = 0;
 
-if ~exist('lp', 'var') & ProcessConsolidateLPs == false
-    error('LP data possibly corrupt. Check data');
-end
+m.lp(:,1)  = m.LP1(:,1);
+m.lp(:,2)  = m.LP2(:,1);
+m.lp(:,3)  = m.LP3(:,1);
+m.lp(:,4)  = m.LP4(:,1);
 
-if ProcessConsolidateLPs == true
-    lp(:,1)  = LP1(:,1);
-    lp(:,2)  = LP2(:,1);
-    lp(:,3)  = LP3(:,1);
-    lp(:,4)  = LP4(:,1);
-    
-    lp(:,5)  = (offset(LP1(:,1)) + offset(LP3(:,1)))/2;
-    lp(:,6)  = (offset(LP2(:,1)) + offset(LP4(:,1)))/2;
-    
-    clearvars LP1 LP2 LP3 LP4;
-    
-    RemoveVariableFromMatFile(ProcessFileName,'LP1');
-    RemoveVariableFromMatFile(ProcessFileName,'LP2');
-    RemoveVariableFromMatFile(ProcessFileName,'LP3');
-    RemoveVariableFromMatFile(ProcessFileName,'LP4');
+%m.lp(:,5)  = (offset(m.LP1(:,1)) + offset(m.LP3(:,1)))/2;
+%m.lp(:,6)  = (offset(m.LP2(:,1)) + offset(m.LP4(:,1)))/2;
 
-end
+clearvars sizeOfLPRecord;

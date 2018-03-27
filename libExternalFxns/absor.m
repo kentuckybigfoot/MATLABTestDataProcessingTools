@@ -85,14 +85,14 @@ function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 
 %%Input option processing and set up
 
- options.doScale = 0;
- options.doTrans = 1;
- options.weights = []; 
+ options.doScale = 0;%
+ options.doTrans = 1;%
+ options.weights = []; %
     
 for ii=1:2:length(varargin)
     param=varargin{ii};
     val=varargin{ii+1};
-    if strcmpi(param,'doScale'), 
+    if strcmpi(param,'doScale')
         options.doScale=val;
     elseif strcmpi(param,'weights')
         options.weights=val;
@@ -103,24 +103,24 @@ for ii=1:2:length(varargin)
     end
 end
 
- doScale = options.doScale;
- doTrans = options.doTrans;
- weights = options.weights;             
+ doScale = options.doScale;%
+ doTrans = options.doTrans;%
+ weights = options.weights;%             
 
 
 
-if ~isempty(which('bsxfun'))
- matmvec=@(M,v) bsxfun(@minus,M,v); %matrix-minus-vector
- mattvec=@(M,v) bsxfun(@times,M,v); %matrix-minus-vector
-else
- matmvec=@matmvecHandle;
- mattvec=@mattvecHandle;
-end
+%if ~isempty(which('bsxfun'))%
+ matmvec=@(M,v) bsxfun(@minus,M,v); %matrix-minus-vector%
+ mattvec=@(M,v) bsxfun(@times,M,v); %matrix-minus-vector%
+%else
+% matmvec=@matmvecHandle;
+% mattvec=@mattvecHandle;
+%end%
 
 
 dimension=size(A,1);
 
-if dimension~=size(B,1),
+if dimension~=size(B,1)
     error 'The number of points to be registered must be the same'
 end
 
@@ -193,7 +193,7 @@ switch dimension
 
         [V,D]=eig(N);
 
-        [trash,emax]=max(real(  diag(D)  )); emax=emax(1);
+        [~,emax]=max(real(  diag(D)  )); emax=emax(1);
 
         q=V(:,emax); %Gets eigenvector corresponding to maximum eigenvalue
         q=real(q);   %Get rid of imaginary part caused by numerical error
@@ -221,12 +221,12 @@ switch dimension
 
         [V,D]=eig(N);
 
-        [trash,emax]=max(real(  diag(D)  )); emax=emax(1);
+        [~,emax]=max(real(  diag(D)  )); emax=emax(1);
 
         q=V(:,emax); %Gets eigenvector corresponding to maximum eigenvalue
         q=real(q);   %Get rid of imaginary part caused by numerical error
 
-        [trash,ii]=max(abs(q)); sgn=sign(q(ii(1)));
+        [~,ii]=max(abs(q)); sgn=sign(q(ii(1)));
          q=q*sgn; %Sign ambiguity
 
         %map to orthogonal matrix
@@ -321,23 +321,6 @@ if nargout>2
     
    
 end
-    
-
-
-
-function M=matmvecHandle(M,v)
-%Matrix-minus-vector
-
-    for ii=1:size(M,1)
-     M(ii,:)=M(ii,:)-v(ii);
-    end
- 
-function M=mattvecHandle(M,v)
-%Matrix-times-vector
-
-    for ii=1:size(M,1)
-     M(ii,:)=M(ii,:).*v;
-    end
     
 function varargout=dealr(v)
 
