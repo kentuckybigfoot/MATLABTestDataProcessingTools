@@ -1,427 +1,985 @@
-function filterGUI
+function Step2_DataFilterGUI
+%Step2_DataFilterGUI Filter signals contained within imported experimental data.
+%   Raw experimental test data imported into MAT-file format using Step1_ImportRAWFiles.m or Step1_ImportASCIIFiles.m may
+%   be filtered using this graphical user interface (GUI). Features include the review, spectral analysis, and filtering of
+%   individual signals contained within the variables of imported data files. See appropriate help files.
+%
+%   Copyright 2016-2018 Christopher L. Kerner.
+%
 
-filename = 'C:\BFFD Data\Shear Tab 1\FS Testing -ST1 - 06-15-16\[Filter]FS Testing - ST1 - Test 1 - 06-15-16.mat';
+fileDir = ''; %Directory file is located in
+filename = 'Testify.mat'; %Name of file to be filtered
 
-d1 = load(filename, 'NormTime');
+%List of variables to be ignored when generating table of variables present within file.
+doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterParameter', 'A', 'B', 'C', 'D', ...
+    'E', 'F', 'G', 'H'}; 
 
-sensorNames       = {'NormTime','run','sg1','sg2','sg3','sg4','sg5','sg6','sg7','sg8','sg9','sg10','sg11','sg12','sg13','sg14','sg15','sg16','sg17','sg18','sg19','sg20','sg21','sg22','wp11','wp12','wp21','wp22','wp31','wp32','wp41','wp42','wp51','wp52','sgBolt','wp61','wp62','wp71','wp72','LC1','LC2','LC3','LC4','MTSLC','MTSLVDT','A','B','C','D','E','F','G','H','LP1','LP2','LP3','LP4'};
+fullFilename = fullfile(fileDir,filename);
 
-%Allocate variables that describe variable to be filtered
-filterVariable = [];
-filterVariableName = '';
-filterVariableKey = '';
-dataToSave = '';
+m = matfile(fullFilename, 'Writable', true);
+fileVariables = who('-file', fullFilename);
 
-%Allocate active filter plot
-filterVariableFocus = '1';
+%Dimensions of figure script was developed using initially (See resizeProtection function below)
+originalFigurePosPixels = [9 9 1264 931];
 
-%Filter Options
-recFreq = [];
-recStr  = [];
+%General script variables
+filterManifest = [];
 
-%Initial values.
-t     = d1.NormTime;                 % Sample Time
-L     = length(t);                  % Length of signal
-fs    = 1/(t(2)-t(1));              % Sampling frequency
-Fpass = 0;%0.0028*2*(1/fs);
-Fstop = 0;%0.00857*2*(1/fs);
-Ap    = 0;%0.00000001;0
-Ast   = 0;%0.0000001;
+%General records regarding data being filtered.
+varList       = [];
+varName       = [];
+tempName      = [];
+originalData  = [];
+modifiedData  = [];
+filteredData  = [];
 
-%,'outerposition', [0 0 1 1]2
-filterGUIFFTFig = figure('Visible','on','Position',[0 0 1400 1000], 'CloseRequestFcn', @clearData);
-filterGUIFig = figure('Visible','off', 'Position', [0 0 1400 1000], 'CloseRequestFcn', @clearData);
+%Initial DSP values to assure globalism and etc.
+Fs = 0;  % Sampling frequency                    
+T  = 0;  % Sampling period       
+L  = 0;  % Length of signal
+t  = 0;  % Time vector
+decimationFactor = NaN;
 
-%Generate Axes to control location and focus. Also turn on grids here.
-%Note that position always works: [left bottom width height]
-FFTAxes1 = axes('Parent', filterGUIFFTFig, 'Units', 'pixels', 'Position', [50,425,1200,575]);
-FFTAxes2 = axes('Parent', filterGUIFFTFig, 'Units', 'pixels', 'Position', [50,75,1200,250]);
-filterDataFilteredAxes = axes('Parent', filterGUIFig, 'Units', 'pixels', 'Position', [50,75,1000,800]);
+%fir1 Filter Constants
+fir1FilterType      = 'low';
+fir1FilterTypeValue = 1;
+fir1Order           = [];
+fir1Freq            = [];
 
-%"hold on" stops MATLAB from destroying my filtered data handles while the
-%zeroes generated are to prepopulate the plots so they can be updated
-%without warning later.
-hold on;
-fakeData = zeros(size(t,1),size(t,2));
+%Custom Filter Design Constants
+Fpass = [];
+Fstop = [];
+Ap    = [];
+Ast   = [];
 
-%Pre-create graphs so they are global and can be populated from functions
-fftStem1 = stem(1, 1, 'Parent', FFTAxes1);
-fftStem2 = stem(1, 1, 'Parent', FFTAxes2);
-filterDataOriginal = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes);
-filterDataFiltered1 = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes, 'Visible', 'off');
-filterDataFiltered2 = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes, 'Visible', 'off');
-filterDataFiltered3 = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes, 'Visible', 'off');
-filterDataFiltered4 = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes, 'Visible', 'off');
-filterDataFiltered5 = plot(fakeData, fakeData, 'Parent', filterDataFilteredAxes, 'Visible', 'off');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Create dialogue
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 0) General note: GUI component positions are normalized units unless otherwise modified later (as is the case with
+%    UIPanels). Position related properties are 1-by-4 double arrays that follow the standard MATLAB position defintion
+%    convention of [left, bottom, width, height].
+% 1) create the GUI figure, then axes, followed by the appropriate lines
+%    to populate axes. The variables are described as follows:
+%       axes1 -> Filtering axes
+%           * p1 -> original signal line
+%           * p2 -> Filtered signal line
+%       axes2 -> Spectral analysis axes
+%           * p3 -> power spectral density line
+%    Lastly, establish the extended data-cursor.
+% 2) Define UI components under filterGUI.* structure where "*" is a wildcard.
+% 3) Format axes (Apply titles, X & Y labels, X & Y major and minor grids)
+% 4) Apply formatting to UI components that best applies once components are fully defined and visible. Used primarily for
+%    assuring aspect ratios remain correct.
+% 5) Generate variable list and popular corresponding UI Table.
+% 6) Call it good, and eat fried balogna sandwiches. Optional arguments for a pat on the back. This isn't serious or funny.
 
-%Add FFT GUI components
-fftDataSelectText  = uicontrol('Parent', filterGUIFFTFig, 'Style','text','String','Select Data for FFT',...
-    'Position',[1300,985,100,15]);
-fftDataSelect = uicontrol('Parent', filterGUIFFTFig, 'Style','popupmenu',...
-    'String',sensorNames,...
-    'Position',[1300,960,100,25],...
-    'Callback',@FFTPlot);
-fftNextButton = uicontrol('Parent', filterGUIFFTFig ,'String','Next >>',...
-    'Position',[1300 400 50 25],...
-    'Callback',@dataFiltering);
+%Define GUI figure
+filterAxes.fig = figure('Visible', 'on', 'Units', 'pixels', 'OuterPosition', [0 0 1280 1024], 'CloseRequestFcn', @clearData);
 
-%Add filter GUI components
-filterControlText  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Plotting Controls (On, Off, Focus)', 'Position',[1050,860,100,15]);
-filterControlTextG0  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Original', 'Position',[1050,840,60,15]);
-filterDataFilteredG0 = uibuttongroup('Parent', filterGUIFig, 'Tag', '0', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 840 225 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G0 = uicontrol(filterDataFilteredG0,'Style', 'radiobutton', 'String','On', 'Position',[0 0 50 15], 'HandleVisibility','off');
-r2G0 = uicontrol(filterDataFilteredG0,'Style', 'radiobutton', 'String', 'Off', 'Position', [50 0 50 15], 'HandleVisibility','off');
-c1G0 = uicontrol(filterDataFilteredG0,'Style', 'checkbox', 'String', 'Active', 'Tag', '0', 'Position', [100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
-b1G0 = uicontrol(filterDataFilteredG0 ,'String', 'Save', 'Position', [165, 0 50 15], 'Callback', @saveData);
+% Overcomes errors stemming from ResizeFcn being defined before the full initilization of related variables that occurs
+% prior to the figure becoming visible. For further info, see "Why Has the Behavior of ResizeFcn Changed?" at
+% https://www.mathworks.com/help/matlab/graphics_transition/why-has-the-behavior-of-resizefcn-changed.html
+filterAxes.fig.ResizeFcn = @resizeProtection;
 
-filterControlTextG1  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 1', 'Position',[1050,810,60,15]);
-filterDataFilteredG1 = uibuttongroup('Parent', filterGUIFig, 'Tag', '1', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 810 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G1 = uicontrol(filterDataFilteredG1,'Style', 'radiobutton', 'String','On', 'Position', [0 0 50 15], 'HandleVisibility','off');
-r2G1 = uicontrol(filterDataFilteredG1,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position', [50 0 50 15], 'HandleVisibility','off');
-c1G1 = uicontrol(filterDataFilteredG1,'Style', 'checkbox', 'String', 'Active', 'Tag', '1', 'Position', [100 0 50 15], 'HandleVisibility','off', 'callback', @filterChangeFocus);
-              
-filterControlTextG2  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 2', 'Position',[1050,780,60,15]);
-filterDataFilteredG2 = uibuttongroup('Parent', filterGUIFig, 'Tag', '2', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 780 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G2 = uicontrol(filterDataFilteredG2,'Style', 'radiobutton', 'String', 'On', 'Position',[0 0 50 15], 'HandleVisibility', 'off');
-r2G2 = uicontrol(filterDataFilteredG2,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position',[50 0 50 15], 'HandleVisibility', 'off');
-c1G2 = uicontrol(filterDataFilteredG2,'Style', 'checkbox', 'String', 'Active', 'Tag', '2', 'Position',[100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
+% Add title to GUI figure that includes the name of the MAT-file currently in use
+filterAxes.fig.NumberTitle = 'off';
+filterAxes.fig.Name = sprintf('Step2_DataFilterGUI - Opened: %s', filename);
 
-filterControlTextG3  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 3', 'Position',[1050,750,60,15]);
-filterDataFilteredG3 = uibuttongroup('Parent', filterGUIFig, 'Tag', '3', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 750 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G3 = uicontrol(filterDataFilteredG3,'Style', 'radiobutton', 'String','On', 'Position',[0 0 50 15], 'HandleVisibility', 'off');
-r2G3 = uicontrol(filterDataFilteredG3,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position',[50 0 50 15], 'HandleVisibility', 'off');
-c1G3 = uicontrol(filterDataFilteredG3,'Style', 'checkbox', 'String', 'Active', 'Tag', '3', 'Position',[100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
+% Define axes and axes' children
+filterAxes.axes1 = axes('Parent', filterAxes.fig, 'Position', [0.04,0.565,0.75,0.40]);
+filterAxes.axes2 = axes('Parent', filterAxes.fig, 'Position', [0.04,0.065,0.75,0.40]);
+filterAxes.p1 = line(filterAxes.axes1, NaN, NaN);
+filterAxes.p2 = line(filterAxes.axes1, NaN, NaN, 'Color', [0.8500, 0.3250, 0.0980]);
+filterAxes.p3 = line(filterAxes.axes2, NaN, NaN);
 
-filterControlTextG4  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 4', 'Position',[1050,720,60,15]);
-filterDataFilteredG4 = uibuttongroup('Parent', filterGUIFig, 'Tag', '4', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 720 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G4 = uicontrol(filterDataFilteredG4,'Style', 'radiobutton', 'String','On', 'Position',[0 0 50 15], 'HandleVisibility', 'off');
-r2G4 = uicontrol(filterDataFilteredG4,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position',[50 0 50 15], 'HandleVisibility', 'off');
-c1G4 = uicontrol(filterDataFilteredG4,'Style', 'checkbox', 'String','Active', 'Tag', '4', 'Position',[100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
+% Assign legend for data filtering axes but turn off visibility prior to filtering.
+filterAxes.legend1 = legend(filterAxes.axes1, {'Orig. Data', 'Filt. Data'}, 'Location', 'Best');
+filterAxes.legend1.Visible = 'Off';
 
-filterControlTextG5  = uicontrol('Parent', filterGUIFig, 'Style','text','String','Group 5', 'Position',[1050,690,60,15]);
-filterDataFilteredG5 = uibuttongroup('Parent', filterGUIFig, 'Tag', '5', 'BorderType', 'None', 'Units', 'pixels', 'Position', [1115 690 200 17], 'SelectionChangedFcn', @filterChangeDisplay);
-r1G5 = uicontrol(filterDataFilteredG5,'Style', 'radiobutton', 'String', 'On', 'Position',[0 0 50 15], 'HandleVisibility', 'off');
-r2G5 = uicontrol(filterDataFilteredG5,'Style', 'radiobutton', 'String', 'Off', 'Value', 1, 'Position',[50 0 50 15], 'HandleVisibility', 'off');
-c1G5 = uicontrol(filterDataFilteredG5,'Style', 'checkbox', 'String','Active', 'Tag', '5', 'Position',[100 0 50 15], 'HandleVisibility', 'off', 'callback', @filterChangeFocus);
+%Assign data cursors
+dcm_obj = datacursormode(filterAxes.fig);
+set(dcm_obj,'UpdateFcn',@extendedDataCursor)
 
-filterControlText1  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'FPass', 'Position', [1050,650,60,15]);
-filterFPassBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Fpass', 'Style', 'edit', 'String', '0', 'Position', [1115,650,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+%% Spectral Analysis Panel
+filterGUI.spectralAnalysis.panel = uipanel( ...
+    'Parent', filterAxes.fig, ... 
+    'Title', 'Spectral Analysis Options', ...
+    'Units', 'normalized', ...
+    'Position', [0.8 0.872 0.182 0.1]);
 
-filterControlText2  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'FStop', 'Position',[1050,610,60,15]);
-filterFStopBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Fstop', 'Style', 'edit', 'String', '0', 'Position', [1115,610,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+%Decimation
+filterGUI.spectralAnalysis.decimation.text = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.panel, ...
+    'Style', 'text', ...
+    'String', 'Decimate', ...
+    'Units', 'normalized', ...
+    'Position', [0.015 0.745 0.22 0.15]);
 
-filterControlText3  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Ap', 'Position',[1050,570,60,15]);
-filterFApBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ap', 'Style', 'edit', 'String', '0', 'Position', [1115,570,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
+filterGUI.spectralAnalysis.decimation.textbox = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.panel, ...
+    'Style', 'edit', ...
+    'Tag', 'decFactor', ...
+    'Units', 'normalized', ...
+    'Position', [0.26 0.65 0.35 0.25], ...
+    'KeyReleaseFcn', @enableDecimate);
+    
+filterGUI.spectralAnalysis.decimation.button = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.panel, ...
+    'String','Decimate', ...
+    'Enable', 'Off', ...
+    'Units', 'normalized', ...
+    'Position', [0.65 0.685 0.29 0.25], ...
+    'Callback', @decimateData);
 
-filterControlText4  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Ast', 'Position',[1050,530,60,15]);
-filterFAstBox = uicontrol('Parent', filterGUIFig, 'Tag', 'Ast', 'Style', 'edit', 'String', '0', 'Position', [1115,530,125,15], 'keyPressFcn', @modifyFilter, 'KeyReleaseFcn', @modifyFilter);
 
-filterTable  = uicontrol('Parent', filterGUIFig, 'Style', 'text', 'String', 'Reccomended Frequencies from FFT', 'Position',[1050,500,200,15]);
-filterTableElements = uitable('Parent', filterGUIFig, 'Position', [1060,275,185,202],...
-    'rowName', {'1','2','3','4','5','6','7','8','9','10'},...
-    'columnName', {'Freq (Hz)', 'PSD'},...
-    'columnEditable',[true true]);
+%Frequency Units
+filterGUI.spectralAnalysis.freqButtons.group.master = uibuttongroup( ...
+    'Parent', filterGUI.spectralAnalysis.panel, ...
+    'BorderWidth', 0, ...
+    'Units', 'normalized', ...
+    'Position', [0.015 0.05 0.9 0.55], ...
+    'SelectionChangedFcn', @changeFrequencyUnits);
 
-filterControlText1.Units = 'Normalized';
-filterFPassBox.Units = 'Normalized';
-filterControlText2.Units = 'Normalized';
-filterFStopBox.Units = 'Normalized';
-filterControlText3.Units = 'Normalized';
-filterFApBox.Units = 'Normalized';
-filterControlText4.Units = 'Normalized';
-filterFAstBox.Units = 'Normalized';
-filterTable.Units = 'Normalized';
-filterTableElemnts.Units = 'Normalized';
+filterGUI.spectralAnalysis.freqButtons.group.option1Button = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.freqButtons.group.master, ...
+    'Tag', 'normalFreq', ...
+    'Style', 'radiobutton', ...
+    'String', 'Normalized Frequency', ...
+    'Enable', 'Off', ...
+    'Units', 'normalized', ...
+    'Position', [0 0.60 0.9 0.35]);
 
-%Turn on major and minor X-Y grids in axes.
-FFTAxes1.XGrid = 'on';
-FFTAxes1.YGrid = 'on';
-FFTAxes1.XMinorGrid = 'on';
-FFTAxes1.YMinorGrid = 'on';
-FFTAxes2.XGrid = 'on';
-FFTAxes2.YGrid = 'on';
-FFTAxes2.XMinorGrid = 'on';
-FFTAxes2.YMinorGrid = 'on';
-filterDataFilteredAxes.XGrid = 'on';
-filterDataFilteredAxes.YGrid = 'on';
-filterDataFilteredAxes.XMinorGrid = 'on';
-filterDataFilteredAxes.YMinorGrid = 'on';
+filterGUI.spectralAnalysis.freqButtons.group.option2Button = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.freqButtons.group.master, ...
+    'Tag', 'standardFreq', ...
+    'Style', 'radiobutton', ...
+    'String', 'Standard Frequency', ...
+    'Enable', 'Off', ...
+    'Units', 'normalized', ...
+    'Position', [0 0.10 0.9 0.35]);
 
-%Add titles and other properties for FFT stem plots
-title(FFTAxes1, 'Power spectral density plot Zoomed)');
-xlim(FFTAxes1, [0 0.1]);
-xlabel(FFTAxes1, 'Frequencies (Hz)')
-title(FFTAxes2, 'Power spectral density plot');
-xlabel(FFTAxes2, 'Frequencies (Hz)')
+%Analyze Button
+filterGUI.spectralAnalysis.analyzeButton = uicontrol( ...
+    'Parent', filterGUI.spectralAnalysis.panel, ...
+    'String','Analyze', ...
+    'Enable', 'Off', ...
+    'Units', 'normalized', ...
+    'Position', [0.65 0.10 0.29 0.25], ...
+    'Callback', @spectralAnalysis);
+%%
 
-%Now that axes() has been used to set initial position of plots and the
-%positions of the UI elements have been defined, set units to 'normalized'
-%to allow graphs and UI elements to adjust to different window sizes.
-% % General % %
-filterGUIFFTFig.Units = 'normalized';
-filterGUIFig.Units = 'normalized';
-% % FFT Components % %
-FFTAxes1.Units = 'normalized';
-FFTAxes2.Units = 'normalized';
-% % FFT Components % %
-fftDataSelectText.Units = 'normalized';
-fftDataSelect.Units = 'normalized';
-%fftTableSelection.Units = 'normalized';
-%fftTableElements.Units = 'normalized';
-fftNextButton.Units = 'normalized';
-% % Filter Components  % %
-filterDataFilteredAxes.Units = 'normalized';
-filterControlText.Units = 'normalized';
-filterControlTextG0.Units = 'normalized';
-filterDataFilteredG0.Units = 'normalized';
-r1G0.Units = 'normalized';
-r2G0.Units = 'normalized';
-c1G0.Units = 'normalized';
-filterControlTextG1.Units = 'normalized';
-filterDataFilteredG1.Units = 'normalized';
-r1G1.Units = 'normalized';
-r2G1.Units = 'normalized';
-c1G1.Units = 'normalized';
-filterControlTextG2.Units = 'normalized';
-filterDataFilteredG2.Units = 'normalized';
-r1G2.Units = 'normalized';
-r2G2.Units = 'normalized';
-c1G2.Units = 'normalized';
-filterControlTextG3.Units = 'normalized';
-filterDataFilteredG3.Units = 'normalized';
-r1G3.Units = 'normalized';
-r2G3.Units = 'normalized';
-c1G3.Units = 'normalized';
-filterControlTextG4.Units = 'normalized';
-filterDataFilteredG4.Units = 'normalized';
-r1G4.Units = 'normalized';
-r2G4.Units = 'normalized';
-c1G4.Units = 'normalized';
-filterControlTextG5.Units = 'normalized';
-filterDataFilteredG5.Units = 'normalized';
-r1G5.Units = 'normalized';
-r2G5.Units = 'normalized';
-c1G5.Units = 'normalized';
+%% Filter Design Panel
+filterGUI.filterDesign.panel = uipanel( ...
+    'Parent', filterAxes.fig, ... 
+    'Title', 'Filter Design', ...
+    'Units', 'normalized', ...
+    'Position', [0.8000 0.6450 0.1820 0.2200]);
 
-%set(findobj(filterGUIFFTFig),'Units','Normalized')
-%set(findobj(filterGUIFig),'Units','Normalized')
+%Filter Type
+filterGUI.filterDesign.designMethodText = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'Design Method', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0210 0.8735 0.3300 0.085]);
 
-    function FFTPlot(source,eventData)
-        d = load(filename, sensorNames{source.Value});
-        filterVariable = d.(sensorNames{source.Value});
-        filterVariableName = source.String{source.Value};
-        filterVariableKey = source.Value;
+filterGUI.filterDesign.designMethod.group.master = uibuttongroup( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'designMethodGroup', ...
+    'BorderWidth', 0, ...
+    'Units', 'normalized', ...
+    'Position', [0.3750 0.88 0.575 0.085], ...
+    'SelectionChangedFcn', @changeFilterDesignMethod);
+
+filterGUI.filterDesign.designMethod.group.filterButton1 = uicontrol( ...
+    'Parent', filterGUI.filterDesign.designMethod.group.master, ...
+    'Tag', 'fir1', ...
+    'Style', 'radiobutton', ...
+    'String', 'fir1', ...
+    'Units', 'normalized', ...
+    'Position', [0 0 0.30 1]);
+
+filterGUI.filterDesign.designMethod.group.filterButton2 = uicontrol( ...
+    'Parent', filterGUI.filterDesign.designMethod.group.master, ...
+    'Tag', 'Custom', ...
+    'Style', 'radiobutton', ...
+    'String', 'Custom', ...
+    'Units', 'normalized', ...
+    'Position', [0.35 0 0.45 1]);
+
+%fir1 Filter Parameters
+filterGUI.filterDesign.fir1.filterTypeText = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'Type', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.021 0.7335 0.15 0.085]);
+
+filterGUI.filterDesign.fir1.filterTypeSelection = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'fir1FilterType', ...
+    'Style', 'popupmenu', ...
+    'String', {'Lowpass', 'Highpass', 'Bandpass', 'Bandstop'}, ...
+    'Value', fir1FilterTypeValue, ...
+    'Units', 'normalized', ...
+    'Position', [0.177 0.6685 0.4 0.085], ...
+    'Callback', @fir1FilterConfig);
+
+filterGUI.filterDesign.fir1.filterOrderText = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'Order', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.021 0.5935 0.15 0.085]);
+
+filterGUI.filterDesign.fir1.filterOrderTextBox = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'fir1FilterOrder', ...
+    'Style', 'edit', ...
+    'String', num2str(fir1Order), ...
+    'Units', 'normalized', ...
+    'Position', [0.177 0.5800 0.5 0.105], ...
+    'KeyReleaseFcn', @fir1FilterConfig);
+
+filterGUI.filterDesign.fir1.filterWnText = uicontrol( ...+
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'wn', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.021 0.4535 0.1 0.085]);
+
+filterGUI.filterDesign.fir1.filterWnTextBox = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'fir1FilterFreq', ...
+    'Style', 'edit', ...
+    'String', num2str(fir1Freq), ...
+    'Units', 'normalized', ...
+    'Position', [0.177 0.4435 0.5 0.105], ...
+    'KeyReleaseFcn', @fir1FilterConfig);
+
+filterGUI.filterDesign.fir1.filterDataButton = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'String', 'Filter', ...
+    'Enable', 'Off', ...
+    'Units', 'normalized', ...
+    'Position', [0.021 0.3135 0.29 0.085], ...
+    'Callback', @fir1FilterData);
+
+%Data Display Control
+filterGUI.filterDesign.showOriginalData.text = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'Show Orig. Data', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0210 0.1935 0.3700 0.0700]);
+
+filterGUI.filterDesign.showOriginalData.group.master = uibuttongroup( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'showOriginalDataButtonGroup', ...
+    'BorderWidth', 0, ...
+    'Units', 'normalized', ...
+    'Position', [0.4120 0.1435 0.5500 0.1600], ...
+    'SelectionChangedFcn', @modifyDataDisplay);
+
+filterGUI.filterDesign.showOriginalData.group.yesButton = uicontrol( ...
+    'Parent', filterGUI.filterDesign.showOriginalData.group.master, ...
+    'Tag', 'origOn', ...
+    'Style', 'radiobutton', ...
+    'String', 'Yes', ...
+    'Units', 'normalized', ...
+    'Position', [0 0 0.32 1]);
+
+filterGUI.filterDesign.showOriginalData.group.noButton = uicontrol( ...
+    'Parent', filterGUI.filterDesign.showOriginalData.group.master, ...
+    'Tag', 'origOff', ...
+    'Style', 'radiobutton', ...
+    'String', 'No', ...
+    'Units', 'normalized', ...
+    'Position', [0.404 0 0.26 1]);
+
+filterGUI.filterDesign.showFilteredData.text = uicontrol( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Style', 'text', ...
+    'String', 'Show Filtered Data', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0210 0.0535 0.3300 0.0700]);
+
+filterGUI.filterDesign.showFilteredData.group.master = uibuttongroup( ...
+    'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'showFilteredDataButtonGroup', ...
+    'BorderWidth', 0, ...
+    'Units', 'normalized', ...
+    'Position', [0.4120 0.0035 0.5500 0.1600], ...
+    'SelectionChangedFcn', @modifyDataDisplay);
+
+filterGUI.filterDesign.showFilteredData.group.yesButton = uicontrol( ...
+    'Parent', filterGUI.filterDesign.showFilteredData.group.master, ...
+    'Tag', 'filtOn', ...
+    'Style', 'radiobutton', ...
+    'String', 'Yes', ...
+    'Units', 'normalized', ...
+    'Position', [0 0 0.32 1]);
+
+filterGUI.filterDesign.showFilteredData.group.noButton = uicontrol( ...
+    'Parent', filterGUI.filterDesign.showFilteredData.group.master, ...
+    'Tag', 'filtOff', ...
+    'Style', 'radiobutton', ...
+    'String', 'No', ...
+    'Units', 'normalized', ...
+    'Position', [0.404 0 0.26 1]);
+%%
+
+%% Filter Manifest Display
+filterGUI.filterManifestDisp.panel = uipanel( ...
+    'Parent', filterAxes.fig, ... 
+    'Title', 'Filter Manifest Entry Viewer', ...
+    'Units', 'normalized', ...
+    'Position', [0.8000 0.5090 0.1820 0.129]);
+
+filterGUI.filterManifestDisp.text.filterMethod = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Style', 'text', ...
+    'String', 'Filter Method', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0150 0.7421 0.2900 0.1850]);
+
+filterGUI.filterManifestDisp.text.filterType = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Style', 'text', ...
+    'String', 'Filter Type', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0150 0.5221 0.2400 0.1850]);
+
+filterGUI.filterManifestDisp.text.filterOrder = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Style', 'text', ...
+    'String', 'Filter Order', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0150 0.2721 0.2600 0.1850]);
+
+filterGUI.filterManifestDisp.text.wn = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Style', 'text', ...
+    'String', 'Filter wn', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.0150 0.0322 0.2050 0.1850]);
+
+%Values
+filterGUI.filterManifestDisp.text.filterMethodValue = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Tag', 'value', ...
+    'Style', 'text', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.3350 0.7421 0.4150 0.1850]);
+
+filterGUI.filterManifestDisp.text.filterTypeValue = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Tag', 'value', ...
+    'Style', 'text', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.3350 0.5221 0.4150 0.1850]);
+
+filterGUI.filterManifestDisp.text.filterOrderValue = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Tag', 'value', ...
+    'Style', 'text', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.3350 0.2721 0.4150 0.1850]);
+
+filterGUI.filterManifestDisp.text.wnValue = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'Tag', 'value', ...
+    'Style', 'text', ...
+    'HorizontalAlignment', 'left', ...
+    'Units', 'normalized', ...
+    'Position', [0.3350 0.0322 0.4150 0.1850]);
+
+%Set default values
+filterGUI.filterManifestDisp.button.setDefaults = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'String', 'Set Default', ...
+    'Enable', 'off', ...
+    'Units', 'normalized', ...
+    'Position', [0.6250 0.2625 0.3500 0.2500], ...
+    'Callback', @setDefaultFilterValues);
+
+filterGUI.filterManifestDisp.button.clearDefaults = uicontrol( ...
+    'Parent', filterGUI.filterManifestDisp.panel, ...
+    'String', 'Clear Default', ...
+    'Enable', 'off', ...
+    'Units', 'normalized', ...
+    'Position', [0.6250 0.0125 0.3500 0.2500], ...
+    'Callback', @clearDefaultFilterValues);
+%%
+
+%% General Operations (Save, reset, etc)
+filterGUI.generalOperations.panel = uipanel( ...
+    'Parent', filterAxes.fig, ... 
+    'BorderType', 'none', ...
+    'Units', 'normalized', ...
+    'Position', [0.8000 0.4700 0.1820 0.028]);
+
+filterGUI.generalOperations.saveButton = uicontrol( ...
+    'Parent', filterGUI.generalOperations.panel, ...
+    'String', 'Save', ...
+    'Enable', 'off', ...
+    'Units', 'normalized', ...
+    'Position', [0 0.0150 0.4800 0.9545], ...
+    'Callback', @saveFilteredData);
+
+filterGUI.generalOperations.resetButton = uicontrol( ...
+    'Parent', filterGUI.generalOperations.panel, ...
+    'String', 'Reset', ...
+    'Units', 'normalized', ...
+    'Position', [0.5200 0.0150 0.4800 0.9545], ...
+    'Callback', @resetDataFiltering);
+
+filterGUI.generalOperations.variablesTable = uitable( ...
+    'Parent', filterAxes.fig, ...
+    'Unit', 'normalized', ...
+    'Position', [0.8000, 0.06500, 0.1800, 0.4000],...
+    'ColumnName', {'Variable Name', 'Filtered?'}, ...
+    'ColumnWidth', {100, 'auto'}, ...
+    'CellSelectionCallback', @initPlot);
+%%
+
+% Assign axes titles
+title(filterAxes.axes1, 'Original/Filtered Signal');
+title(filterAxes.axes2, 'Power Spectral Density');
+
+% Assign generic X and Y labels for axes
+set([filterAxes.axes1.XLabel, filterAxes.axes2.XLabel], 'String', 'Unassigned'); %Frequencies (Hz.)
+set([filterAxes.axes1.YLabel, filterAxes.axes2.YLabel], 'String', 'Unassigned'); %String', 'Power/Frequency (dB/Hz)
+
+% Assign major and minor X and Y grids for axes.
+plotProps.XGrid = 'on';
+plotProps.YGrid = 'on';
+plotProps.XMinorGrid = 'on';
+plotProps.YMinorGrid = 'on';
+set([filterAxes.axes1, filterAxes.axes2], plotProps);
+
+% Switch UI Panels' units to pixels and then set each a fixed width so that UI Panels retain aspect ratio on resize
+
+display([getpixelposition(filterGUI.spectralAnalysis.panel); getpixelposition(filterGUI.filterDesign.panel)]);
+
+%Get list of variables contained within MAT-file specified to be read by this script/GUI
+varList = getVariablesToFilter();
+
+%Correct the placement of the filter type textbox.
+fir1FilterTypeBoxHeight = filterGUI.filterDesign.fir1.filterTypeSelection.Extent(4);
+fir1FilterTypeBoxDistFromBottom = filterGUI.filterDesign.fir1.filterTypeSelection.Position(2);
+filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxDistFromBottom + fir1FilterTypeBoxHeight;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Corresponding Nested Functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    function initPlot(hObject, eventData, handles) %#ok<INUSD,INUSL>
+        %Quick check if data is filtered
+        isDataFiltered = strcmp(string(eventData.Source.Data(eventData.Indices(1,1),2)), 'Yes');
         
+        %Very shady hack to quickly fix a bug regarding accidentally overwriting varName.
+        tempName = varList{eventData.Indices(1,1)};
+        
+        %Check if just reviewing a filter manifest entry
+        if eventData.Indices(1,2) == 2
+            if isDataFiltered
+                updateManifestDisplay();
+                return
+            end
+            %Else... Carry on, have a good day.
+        end
+        
+        %See if user is switching data file variables
+        varNameOld = varName;
+        
+        %Get name of variable user has selected and then load data for it
+        varName = varList{eventData.Indices(1,1)};
+        originalData = m.(varName);
+        
+        %Check if this is the user's first variable selection. If it is,
+        %proceed to initial signal plotting. If not, user is switching from
+        %one variable to the other, and script must reset.
+        if ~isempty(varNameOld) && ~strcmp(varNameOld, varName)
+            resetManifestdisplay();
+            resetSpectralAnalysis();
+            resetFilterData();
+        end
+        
+        %Plot variable's time-series data
+        filterAxes.p1.XData = m.NormTime;
+        filterAxes.p1.YData = originalData;
+        
+        %Determine y-axis representation using variable name/type
+        if contains(varName,'sg')
+            yLabelString = 'Strain Gauge Reading (uStrain)';
+        elseif contains(varName,['wp','LVDT'])
+            yLabelString = 'Displacement Reading (in.)';
+        elseif contains(varName,'LC')
+            yLabelString = 'Load Cell Reading (lbf.)';
+        else 
+            yLabelString = 'Unknown Secondary Axis Title';
+        end
+        
+        %Update titles to reflect variable chosen and data presented
+        title(filterAxes.axes1, sprintf('Plot of %s vs. Normal Time', varName));
+        filterAxes.axes1.XLabel.String = 'Time (sec)';
+        filterAxes.axes1.YLabel.String = yLabelString;
+        
+        %Make sure the correct options are avaliable
+        filterGUI.spectralAnalysis.decimation.button.Enable = 'Off';
+        filterGUI.filterDesign.fir1.filterDataButton.Enable = 'Off';
+        filterGUI.spectralAnalysis.analyzeButton.Enable = 'On';
+        
+        if isDataFiltered
+            updateManifestDisplay();
+        end
+        
+        %Quick fix to correct filter button dissapearing once a default is set and then a different record is chosen
+        if all([~isempty(fir1FilterType), ~isempty(fir1FilterTypeValue), ~isempty(fir1Order), ~isempty(fir1Freq)])
+            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'on';
+        end
+    end
+
+    function spectralAnalysis(hObject, eventData, handles)    %#ok<INUSD>
+        deactivateButton(filterGUI.spectralAnalysis.analyzeButton);
+        %Get sampling frequency.
+        if contains(fileVariables, 'importManifest')
+            %Horrible method, because it assumes all files were imported
+            %with same parameters as the first file.
+            importManifest = m.importManifest;
+            if importManifest(1).decimationFactor > 0
+                Fs = (1/importManifest(1).decimationFactor)*importManifest.blockRate;
+            else
+                Fs = importManifest.blockRate;
+            end
+        else
+            Fs = 1/(m.NormTime(2,1)-m.NormTime(1,1));
+        end
+        
+        %See if decimated data is being analyzed and adjust sampling frequency accordingly. 
+        %If not, use original data
+        if isempty(modifiedData)
+            dataFocus = originalData - mean(originalData);
+        else
+           dataFocus = modifiedData - mean(modifiedData);
+           Fs = (1/decimationFactor)*Fs;
+        end
+        
+        %Set signal constants    
+        L = length(dataFocus)-1;	% Length of signal
+
         %Run Fast Fourier Transform
-        fftRun = fft(filterVariable);
+        fftRun = fft(dataFocus);
         
         %Calculate power spectral density
         psd = fftRun.*conj(fftRun)/L;
         
-        %Calculate normalized frequency and then multiply by number of samples to get frequency range. Halved due to nyquist (mirrors after half)
-        f = (fs/L)*(0:ceil(L/2)-1);
+        %[maxValue,indexMax] = max(abs(fftRun))
         
-        %Update Stem plot data
-        fftStem1.XData = f(1,1:ceil(L/2));
-        fftStem1.YData = psd(1:ceil(L/2),1);
-        fftStem2.XData = f(1,1:ceil(L/2));
-        fftStem2.YData = psd(1:ceil(L/2),1);
+        %Calculate normalized frequency in terms of pi*rad/samples. A good explanation is found at
+        %https://dsp.stackexchange.com/a/16017. Essentially, take the frequency in Hertz, multiply it by 2, then devide
+        %by the sampling frequency in hertz.
+        f = ((Fs/L).*(0:ceil(L/2)-1))./(Fs/2);
         
-        recFreq = f(1,1:25);
-        recStr  = psd(1:25,1);
+        %Set plot data
+        filterAxes.p3.XData = f(1,1:ceil(L/2));
+        filterAxes.p3.YData = psd(1:ceil(L/2),1);
         
-        filterTableElements.Data = [recFreq' recStr];
+        %Set plot titles.
+        title(filterAxes.axes2, sprintf('Power Spectral Density of %s', varName));
+        filterAxes.axes2.XLabel.String = 'Normalized Frequency  (\times\pi rad/sample)';
+        filterAxes.axes2.YLabel.String = 'Power';
         
-        %Update stem plot title
-        title(FFTAxes1, sprintf('Power Spectral Density Plot of %s (Zoomed)', filterVariableName));
-        title(FFTAxes2, sprintf('Power Spectral Density Plot of %s (Full view)', filterVariableName));
+        %Ensure proper feature options are avaliable now.
+        set([filterGUI.spectralAnalysis.freqButtons.group.option1Button, filterGUI.spectralAnalysis.freqButtons.group.option2Button], 'Enable', 'On');
+        reactivateButton(filterGUI.spectralAnalysis.analyzeButton);
     end
 
-    function dataFiltering(source,eventData)
-        filterGUIFFTFig.Visible = 'off';
-        filterGUIFig.Visible = 'on';
-        
-        filterDataOriginal.XData = d1.NormTime;
-        filterDataOriginal.YData = filterVariable;
-        
-        %Update axis and titles
-        if ~isempty(strfind(filterVariableName,'sg'))
-            yLabelString = 'Strain Gauge Reading (uStrain)';
-        elseif ~isempty(strfind(filterVariableName,'wp')) || ~isempty(strfind(filterVariableName,'LVDT'))
-            yLabelString = 'Displacement Reading (inches)';
-        elseif ~isempty(strfind(filterVariableName,'LC')) && strcmp(filterVariableName,'MTSLC')
-            yLabelString = 'Load Cell Reading (lbf)';
-        else 
-            yLabelString = 'Load Cell Reading (kip)';
+    function enableDecimate(hObject, eventData, handles) %#ok<INUSD,INUSL>
+        if ~isempty(originalData)
+            filterGUI.spectralAnalysis.decimation.button.Enable = 'On';
         end
-            
-        title(filterDataFilteredAxes, sprintf('Plot of %s vs. Normal Time', filterVariableName));
-        xlabel(filterDataFilteredAxes, 'Time (sec)')
-        ylabel(filterDataFilteredAxes, yLabelString)
         
-        filterDataOriginal.Visible = 'On';
-        
-        filterDataFFTAxes = axes('Parent', filterGUIFig, 'Units', 'pixels', 'Position', [1075,65,200,200]);
-        filterDataFFTPlot = stem(recFreq, recStr, 'Parent', filterDataFFTAxes);
-        
-        filterDataFFTAxes.Units = 'Normalized';
-        filterDataFFTPlot = 'Normalized';
+        if strcmp(eventData.Key, 'return')
+            decimateData();
+        end     
     end
 
-    function filterChangeDisplay(source, eventData)
-        switch source.Tag
-            case '0'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataOriginal.Visible = 'On';
-                else
-                   filterDataOriginal.Visible = 'Off';
-                end
-            case '1'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataFiltered1.Visible = 'On';
-                else
-                    filterDataFiltered1.Visible = 'Off';
-                end
-            case '2'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataFiltered2.Visible = 'On';
-                else
-                    filterDataFiltered2.Visible = 'Off';
-                end
-           case '3'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataFiltered3.Visible = 'On';
-                else
-                    filterDataFiltered3.Visible = 'Off';
-                end
-          case '4'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataFiltered4.Visible = 'On';
-                else
-                    filterDataFiltered4.Visible = 'Off';
-                end
-          case '5'
-                if strcmp(eventData.NewValue.String, 'On')
-                    filterDataFiltered5.Visible = 'On';
-                else
-                    filterDataFiltered5.Visible = 'Off';
-                end
+    function decimateData(hObject, eventData, handles) %#ok<INUSD>
+        deactivateButton(filterGUI.spectralAnalysis.decimation.button)
+        decimationFactor = str2double(filterGUI.spectralAnalysis.decimation.textbox.String);
+        if decimationFactor > 1
+            modifiedData = decimate(originalData, decimationFactor);
+            spectralAnalysis();
+        end
+        reactivateButton(filterGUI.spectralAnalysis.decimation.button)
+    end
+
+    function changeFrequencyUnits(hObject, eventData, handles) %#ok<INUSD,INUSL>
+        switch eventData.NewValue.Tag
+            case 'standardFreq'
+                f = ((Fs/L)*(0:ceil(L/2)-1));
+                filterAxes.axes2.XLabel.String = 'Frequency (Hz)';
+            case 'normalFreq'
+                f = (2*((Fs/L)*(0:ceil(L/2)-1)))/Fs;
+                filterAxes.axes2.XLabel.String = 'Normalized Frequency  (\times\pi rad/sample)';
+        end
+        
+        filterAxes.p3.XData = f(1,1:ceil(L/2));
+    end
+
+    function changeFilterDesignMethod(hObject, eventData, handles) %#ok<INUSD,INUSL>
+        switch eventData.NewValue.Tag
+            case 'fir1'
+                set([filterGUI.filterDesign.fir1.filterTypeText, filterGUI.filterDesign.fir1.filterTypeSelection, ...
+                    filterGUI.filterDesign.fir1.filterOrderText, filterGUI.filterDesign.fir1.filterOrderTextBox, ...
+                    filterGUI.filterDesign.fir1.filterWnText, filterGUI.filterDesign.fir1.filterWnTextBox, ...
+                    filterGUI.filterDesign.fir1.filterDataButton], ...
+                    'Visible', 'On');
+            case 'Custom'
+                set([filterGUI.filterDesign.fir1.filterTypeText, filterGUI.filterDesign.fir1.filterTypeSelection, ...
+                    filterGUI.filterDesign.fir1.filterOrderText, filterGUI.filterDesign.fir1.filterOrderTextBox, ...
+                    filterGUI.filterDesign.fir1.filterWnText, filterGUI.filterDesign.fir1.filterWnTextBox, ...
+                    filterGUI.filterDesign.fir1.filterDataButton], ...
+                    'Visible', 'Off');
         end
     end
 
-    function filterChangeFocus(source, eventData)
-        filterVariableFocus = source.Tag;
-        
-        switch filterVariableFocus
-            case '0'
-                c1G0.Value = 1;
-                c1G1.Value = 0;
-                c1G2.Value = 0;
-                c1G3.Value = 0;
-                c1G4.Value = 0;
-                c1G5.Value = 0;
-            case '1'
-                c1G1.Value = 1;
-                c1G0.Value = 0;
-                c1G2.Value = 0;
-                c1G3.Value = 0;
-                c1G4.Value = 0;
-                c1G5.Value = 0;
-            case '2'
-                c1G2.Value = 1;
-                c1G0.Value = 0;
-                c1G1.Value = 0;
-                c1G3.Value = 0;
-                c1G4.Value = 0;
-                c1G5.Value = 0;
-            case '3'
-                c1G3.Value = 1;
-                c1G0.Value = 0;
-                c1G1.Value = 0;
-                c1G2.Value = 0;
-                c1G4.Value = 0;
-                c1G5.Value = 0;
-            case '4'
-                c1G4.Value = 1;
-                c1G0.Value = 0;
-                c1G1.Value = 0;
-                c1G2.Value = 0;
-                c1G3.Value = 0;
-                c1G5.Value = 0;
-            case '5'
-                c1G5.Value = 1;
-                c1G0.Value = 0;
-                c1G1.Value = 0;
-                c1G2.Value = 0;
-                c1G3.Value = 0;
-                c1G4.Value = 0;
-        end         
-    end
-
-    function modifyFilter(source, eventData)
-        if ~strcmp(eventData.Key, 'return')
-            return;
+    function fir1FilterConfig(hObject, eventData, handles) %#ok<INUSD>
+        %Switch between which filter parameter was modified
+        switch hObject.Tag
+            case 'fir1FilterType'
+                switch hObject.String{hObject.Value}
+                    case 'Lowpass'
+                        fir1FilterType = 'low';
+                    case 'Highpass'
+                        fir1FilterType = 'high';
+                    case 'Bandpass'
+                        fir1FilterType = 'bandpass';
+                    case 'Stopband'
+                        fir1FilterType = 'stop';
+                end
+            case 'fir1FilterOrder'
+                fir1Order = str2double(hObject.String);
+            case 'fir1FilterFreq'
+                fir1Freq = str2double(hObject.String);
         end
-        
-        switch source.Tag
-            case 'Fpass'
-                Fpass = str2num(source.String)*2*(1/fs);
-            case 'Fstop'
-                Fstop = str2num(source.String)*2*(1/fs);
-            case 'Ap'
-                Ap = str2num(source.String);
-            case 'Ast'
-                Ast = str2num(source.String);
-        end
-
-        if Fpass ~= 0 && Fstop ~= 0 && Ap ~= 0 && Ast ~= 0
-            dF = designfilt('lowpassiir', 'PassbandFrequency', Fpass, ...
-               'StopbandFrequency', Fstop, 'PassbandRipple', Ap, ...
-               'StopbandAttenuation', Ast, 'DesignMethod', 'butter' ...
-               );
-           
-               F = filtfilt(dF,filterVariable);
-                
-               switch filterVariableFocus
-                   case '1'
-                       filterDataFiltered1.XData = t;
-                       filterDataFiltered1.YData = F;
-                   case '2'
-                       filterDataFiltered2.XData = t;
-                       filterDataFiltered2.YData = F;
-                   case '3'
-                       filterDataFiltered3.XData = t;
-                       filterDataFiltered3.YData = F;
-                   case '4'
-                       filterDataFiltered4.XData = t;
-                       filterDataFiltered4.YData = F;
-                   case '5'
-                       filterDataFiltered5.XData = t;
-                       filterDataFiltered5.YData = F;
-               end
+        if fir1IsReadyToFilter
+            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'On';
+            if strcmp(eventData.Key, 'return')
+                fir1FilterData();
             end
-    end
-   
-    function saveData(source, eventData)
-        switch filterVariableFocus
-            case '1'
-                dataToSave = filterDataFiltered1.YData;
-            case '2'
-                dataToSave = filterDataFiltered2.YData;
-            case '3'
-                dataToSave = filterDataFiltered3.YData;
-            case '4'
-                dataToSave = filterDataFiltered4.YData;
-            case '5'
-                dataToSave = filterDataFiltered5.YData;
-        end
-        
-        saveFilteredData(filename, sensorNames{filterVariableKey}, dataToSave', [Fpass Fstop Ap Ast])
+       else
+           filterGUI.filterDesign.fir1.filterDataButton.Enable = 'Off';
+       end
     end
 
-     function clearData(source, eventData)
-         delete(filterGUIFFTFig);
-         delete(filterGUIFig);
-         clear;
-     end
+    function isReadyToFilter = fir1IsReadyToFilter()
+        if all([~isempty(fir1FilterType), ~isempty(fir1Order), ~isempty(fir1Freq)])
+            isReadyToFilter = true;
+        else
+            isReadyToFilter = false;
+        end
+    end
+
+    function fir1FilterData(hObject, eventData, handles) %#ok<INUSD>
+        deactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
+        b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        filteredData = filtfilt(b,1,originalData);
+        
+        filterAxes.p2.XData = m.NormTime;
+        filterAxes.p2.YData = filteredData;
+        
+        filterGUI.generalOperations.saveButton.Enable = 'On';
+        reactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
+    end
+
+    function modifyDataDisplay(hObject, eventData, handles) %#ok<INUSD,INUSL>
+        %orig data, filt data, legend addition
+        switch eventData.NewValue.Tag
+            case 'origOn'
+                filterAxes.p1.Visible = 'On';
+            case 'origOff'
+                filterAxes.p1.Visible = 'Off';
+            case 'filtOn'
+                filterAxes.p2.Visible = 'On';
+            case 'filtOff'
+                filterAxes.p2.Visible = 'Off';
+        end
+    end
+    
+    %Created function for mundane task so as to have method for future behavior expansion.
+    function deactivateButton(obj)
+        obj.Enable = 'Off';
+        drawnow
+    end
+    
+    %Created function for mundane task so as to have method for future behavior expansion.
+    function reactivateButton(obj)
+        obj.Enable = 'On';
+        drawnow
+    end
+
+    function saveFilteredData(hObject, eventData, handles) %#ok<INUSD>
+        %Don't forget to include a legacy script/upgrade for old filter method....
+        
+        if ismember('filterManifest', fileVariables)
+            load(fullFilename, 'filterManifest');
+        else
+            filterManifest = [];
+            save(fullFilename, 'filterManifest', '-append');
+        end
+        
+        filterManifest.(varName) = struct('filterMethod', 'fir1', 'filterType', fir1FilterType, 'filterOrder', fir1Order, 'wn', fir1Freq, 'Fpass', Fpass, 'Fstop', Fstop, 'Ap', Ap, 'Ast', Ast);
+        
+        m.filterManifest = filterManifest;
+        m.(varName) = filteredData;
+        
+        %A lazy way to assure data saved, and that the variable list now
+        %reflects the variable's been filtered, but is computational
+        %expensive considering.
+        varList = getVariablesToFilter();
+    end
+
+    function resetDataFiltering(hObject, eventData, handles) %#ok<INUSD>
+        %Used to reset the most significant components of the GUI without
+        %physically restarting the GUI.
+        resetSpectralAnalysis();
+        resetFilterData();
+        originalData = [];
+        varList = getVariablesToFilter();
+        %clearData();
+        %Step2_DatafilterGUI();
+    end
+
+    function clearData(hObject, eventData, handles) %#ok<INUSD>
+        %Function used when users closes GUI. This assures that all data is
+        %deleted, and that nothing is left behind.
+         delete(filterAxes.fig)
+         clear
+    end
+ 
+    function resetSpectralAnalysis( ~ )
+        %First, clear old graphic data
+        filterAxes.p3.XData = NaN;
+        filterAxes.p3.YData = NaN;
+        title(filterAxes.axes2, 'Power Spectral Density');
+        set([filterAxes.axes1.XLabel, filterAxes.axes2.YLabel], 'String', 'Unassigned');
+        
+        %Next, Remove old values
+        modifiedData = [];
+        decimationFactor = 0;
+        filterGUI.spectralAnalysis.decimation.textbox.String = '';
+        
+        %Last, reset feature options.
+        set([filterGUI.spectralAnalysis.freqButtons.group.option1Button, filterGUI.spectralAnalysis.freqButtons.group.option2Button], 'Enable', 'Off');
+        filterGUI.spectralAnalysis.freqButtons.group.option1Button.Selected = 'On';
+    end
+
+    function resetFilterData( ~ )
+        %First, clear old graphic data
+        set([filterAxes.p1, filterAxes.p2], {'XData','YData'}, {NaN,NaN});
+        set([filterAxes.p1, filterAxes.p2], 'Visible', 'On');
+        title(filterAxes.axes1, 'Original/Filtered Signal');
+        set([filterAxes.axes1.XLabel, filterAxes.axes2.YLabel], 'String', 'Unassigned');
+        
+        %Next, Remove old values
+        filteredData = [];
+        filterGUI.filterDesign.fir1.filterTypeSelection.Value = fir1FilterTypeValue;
+        set([filterGUI.filterDesign.fir1.filterOrderTextBox, filterGUI.filterDesign.fir1.filterWnTextBox], {'String'}, ...
+            {num2str(fir1Order); num2str(fir1Freq)});
+        
+        %Last, reset feature options.
+        set([filterGUI.filterDesign.designMethod.group.filterButton1, filterGUI.filterDesign.showOriginalData.group.yesButton, ...
+            filterGUI.filterDesign.showFilteredData.group.yesButton], 'Selected', 'On');
+        set([filterGUI.filterDesign.fir1.filterDataButton, filterGUI.generalOperations.saveButton], 'Enable', 'Off');
+    end
+
+    function varList = getVariablesToFilter( ~ )  
+        if ismember('filterManifest', fileVariables)
+            load(fullFilename, 'filterManifest');
+            filterStatus = 1;
+        else
+            filterStatus = 0;
+        end
+        
+        s = 1;
+        for r = 1:size(fileVariables,1)
+            if any(strcmp(fileVariables{r},doNotFilter))
+                continue
+            end
+            
+            if filterStatus == 1 && isfield(filterManifest, fileVariables(r))
+                isFiltered = 'Yes';
+            else
+                isFiltered = 'No';
+            end
+            
+            varList(s,1:2) = [fileVariables(r) isFiltered]; %#ok<AGROW>
+            
+            s = s+1;
+        end
+        
+        filterGUI.generalOperations.variablesTable.Data = varList;
+        
+    end
+    
+    function updateManifestDisplay()
+        %Turn on relevent UIControls
+        set(allchild(filterGUI.filterManifestDisp.panel), 'Visible', 'on');
+        
+        %Enable Set button
+        filterGUI.filterManifestDisp.button.setDefaults.Enable = 'on';
+        
+        manifestDispUIHandles = findall(filterGUI.filterManifestDisp.panel, 'Tag', 'value');
+        manifestValues = {num2str(filterManifest.(tempName).wn); ...
+            num2str(filterManifest.(tempName).filterOrder); ...
+            filterManifest.(tempName).filterType; ...
+            filterManifest.(tempName).filterMethod};
+        
+        switch manifestValues{3}
+            case 'low'
+                manifestValues{3} = 'Lowpass';
+            case 'high'
+                manifestValues{3} = 'Highpass';
+            case 'bandpass'
+                manifestValues{3} = 'Bandpass';
+            case 'stop'
+                manifestValues{3} = 'Stopband';
+        end
+        
+        %Set was behaving strangley, so I opted for a loop for time.
+        for r = 1:4
+            manifestDispUIHandles(r).String = manifestValues(r);
+        end
+    end
+
+    function resetManifestdisplay()
+        manifestUIDispHandles = allchild(filterGUI.filterManifestDisp.panel);
+        set(manifestUIDispHandles, 'Visible', 'off')
+    end
+
+    function setDefaultFilterValues(hObject, eventData, handles) %#ok<INUSD>
+        switch filterManifest.(tempName).filterType
+            case 'low'
+                fir1FilterTypeValue = 1;
+            case 'high'
+                fir1FilterTypeValue = 2;
+            case 'bandpass'
+                fir1FilterTypeValue = 3;
+            case 'stop'
+                fir1FilterTypeValue = 4;
+        end
+        
+        fir1FilterType = filterManifest.(tempName).filterType;
+        fir1Order  = filterManifest.(tempName).filterOrder;
+        fir1Freq = filterManifest.(tempName).wn;
+        
+        filterGUI.filterDesign.fir1.filterTypeSelection.Value = fir1FilterTypeValue;
+        filterGUI.filterDesign.fir1.filterOrderTextBox.String = num2str(fir1Order);
+        filterGUI.filterDesign.fir1.filterWnTextBox.String = num2str(fir1Freq);
+        
+        set([filterGUI.filterDesign.fir1.filterDataButton, filterGUI.filterManifestDisp.button.clearDefaults], ...
+            'Enable', 'on');
+    end
+
+    function clearDefaultFilterValues(hObject, eventData, handles) %#ok<INUSD>
+        fir1FilterType      = 'low';
+        fir1FilterTypeValue = 1;
+        fir1Order           = [];
+        fir1Freq            = [];
+        
+        filterGUI.filterManifestDisp.button.clearDefaults.Enable = 'off';
+    end
+    
+    function resizeProtection(hObject, eventData, handles) %#ok<INUSD>
+        % Two major functions performed by this function. See below.
+        
+        %Get position of FilterGUI fig in pixels
+        currentFigurePosPixels = getpixelposition(filterAxes.fig);
+        
+        % 1) A very lackadaisical/non-deterministic way of assuring that the GUI is not shrunk down to a size that obscures
+        %    the view of features/options. Note that his could cause the close button to be outside the display area of the 
+        %    screen display, but displays with a resolution of 1280x1024 aren't prevelent, especially on the Auburn 
+        %    University Campus.
+        %
+        %    In summary, it is both not worth the effort or overcoming my laziness to actually determine the true dimensions 
+        %    at which the GUI becomes too small. Literally, it takes a lot of effort the way that MATLAB defines these parameters.
+        
+        %If width is smaller than that specified, resize to minimum width
+        if currentFigurePosPixels(3) < 1245
+            filterAxes.fig.OuterPosition(3) = 1280;
+        end
+        
+        %If height is smaller than that specified, resize to minimum height
+        if currentFigurePosPixels(4) < 922
+            filterAxes.fig.OuterPosition(4) = 1024;
+        end
+        
+        %Get position of FilterGUI fig in pixels again since resizing in 1) may have taken place.
+        currentFigurePosPixels = getpixelposition(filterAxes.fig);
+
+        % 2) A somewhat dirty, yet still efficient, method of preserving the aspect ratios of UI Panels when the GUI is
+        %    resized for whatever reason. Note that the 1264 value is the width (in pixels) of the GUI figure used to obtain
+        %    the normalized positions used. Development initially took place on a computer with a Dell 1908FPb display with
+        %    a set resolution of 1280x1024 and scaling at 100% in Windows 7.
+        UIPanelHandles = findobj(0, 'Type', 'uipanel', '-or', 'Type', 'uitable');
+        
+        for r = 1:size(UIPanelHandles,1)
+            resizedPanelWidthPos = (UIPanelHandles(r).Position(3)*originalFigurePosPixels(3))/currentFigurePosPixels(3);
+            resizedPanelHeightPos = (UIPanelHandles(r).Position(4)*originalFigurePosPixels(4))/currentFigurePosPixels(4);
+            
+            UIPanelHandles(r).Position(3:4) = [resizedPanelWidthPos, resizedPanelHeightPos];
+        end
+        
+        %Update to reflect size change
+        originalFigurePosPixels = currentFigurePosPixels;
+    end
+
+    function output_txt = extendedDataCursor(obj,event_obj) %#ok<INUSL>
+        % Display the position of the data cursor
+        % obj          Currently not used (empty)
+        % event_obj    Handle to event object
+        % output_txt   Data cursor text string (string or cell array of strings).
+        
+        pos = get(event_obj,'Position');
+        di = get(event_obj,'DataIndex');
+        if event_obj.Target.Parent == filterAxes.axes2
+            
+            freqHz = (di-1) * (Fs/L);
+            if decimationFactor > 1
+                freqWn = freqHz * (2/(Fs*decimationFactor));
+            else
+                freqWn = freqHz * (2/Fs);
+            end
+            
+            %Provides frequency output as if we had not decimated. This is
+            %to help delineate frequencies. Decimation allows a deeper look
+            %into frequencies without the noise of our big data, so relate
+            %back to what we're actually working with.
+            output_txt = {['X: ',num2str(pos(1),10)],...
+                ['Y: ',num2str(pos(2),10)],...
+                ['Index: ',num2str(di)], ...
+                ['Freq (Hz): ',num2str(freqHz)], ...
+                ['Wn (pi rad/samp): ', num2str(freqWn)]};
+        elseif event_obj.Target.Parent == filterAxes.axes1
+            output_txt = {['X: ',num2str(pos(1),10)],...
+                ['Y: ',num2str(pos(2),10)],...
+                ['Index: ',num2str(di)]};
+        end
+
+    end
 end
