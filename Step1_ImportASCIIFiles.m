@@ -2,6 +2,10 @@ clear all
 close all
 clc
 
+%Initialize suite
+initializeSuite(mfilename('fullpath'))
+
+%Script configuration parameters
 t_textFileLocation = 'C:\Users\Christopher\Desktop\Random Import\'; %Location of File
 t_textFileName     = 'fs testing -st4 - 07-20-16Run'; %Name of file to be processed
 t_textFileSeed     = 2000;

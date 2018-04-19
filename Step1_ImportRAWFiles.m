@@ -7,8 +7,8 @@
 clear all
 close all
 
-%Include functions
-addpath(genpath('libImport'));
+%Initialize suite
+initializeSuite(mfilename('fullpath'))
 
 %File import definitions
 RAWDirectory     = '';

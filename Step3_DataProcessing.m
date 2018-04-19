@@ -22,14 +22,14 @@ addpath(genpath('dataProcessingSubroutines'))
 %%
 
 %Post-Process Component Variables
-ProcessFilePath              = 'C:\Users\Christopher\Desktop';
-ProcessFileName              = '[Filter]FS Testing - ST3 - Test 1 - 08-24-16.mat';
+ProcessFilePath              = '';
+ProcessFileName              = '';
 ProcessShearTab              = getShearTab(ProcessFileName);
-ProcessConsolidateSGs        = false;
-ProcessConsolidateWPs        = false;
-ProcessConsolidateLCs        = false;
+ProcessConsolidateSGs        = true;
+ProcessConsolidateWPs        = true;
+ProcessConsolidateLCs        = true;
 ProcessConsolidateLPs        = false;
-ProcessWPAngles              = false;
+ProcessWPAngles              = true;
 ProcessWPProperties          = true;
 ProcessWPCoords              = true;
 ProcessConfigLPs             = false;
@@ -52,7 +52,7 @@ if ProcessShearTab < 3
     %Bolt 1 used in connection 1 & 2
     boltEquation = 0.1073559499; %(uE)/lb
 else
-    %Bolt 2 used in connection 1 & 2
+    %Bolt 2 used in connection 3 & 4
     boltEquation = 0.1094678767; %(uE)/lb
 end
 
