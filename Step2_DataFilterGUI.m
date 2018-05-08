@@ -8,13 +8,10 @@ function Step2_DataFilterGUI
 %
 
 %Initialize suite
-initializeSuite(mfilename('fullpath'))
+%initializeSuite(mfilename('fullpath'))
 
-fileDir = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools'; %Directory file is located in
-filename = 'FS Testing - ST3 - Test 6 - 07-29-16'; %Name of file to be filtered
-
-%fileDir = ''; %Directory file is located in
-%filename = 'Testify.mat'; %Name of file to be filtered
+fileDir = ''; %Directory file is located in
+filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
 
 %List of variables to be ignored when generating table of variables present within file.
 doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterParameter', 'A', 'B', 'C', 'D', ...
