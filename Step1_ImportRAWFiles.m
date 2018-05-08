@@ -14,7 +14,7 @@ initializeSuite(mfilename('fullpath'))
 RAWDirectory     = '';
 saveDir          = '';
 saveName         = '';
-rangeToImport    = 1000;
+rangeToImport    = 0000;
 decimationFactor = 0;
 decimateType     = 'fir';
 
