@@ -1,9 +1,9 @@
-%function [  ] = initializeSuite( invokingScriptsInfo )
+function [  ] = initializeSuite( invokingScriptsInfo )
 %initializeSuite Performs initilization tasks neccessary to execute suite components
 %   Rather straight-forward.
     
     % Diagnostics: comment out the function defintion and it's end before defining the following.
-    invokingScriptsInfo = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools\Step3_DataProcessing2';
+    %invokingScriptsInfo = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools\Step3_DataProcessing2';
 	
     % Get invoking suite component's filename and directory
 	invokingScriptsInfoSplit = strsplit(invokingScriptsInfo, '\\');
@@ -223,4 +223,4 @@
         otherwise
             error('Unable to determine which suite component is being executed.')
     end
-%end
+end
