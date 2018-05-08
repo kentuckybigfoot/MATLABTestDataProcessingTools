@@ -78,14 +78,10 @@
                         % Warn of toolbox's absense, then flag to warn of absence upon dependant(s)' initialization
                         warnMissingToolboxes(s) = true;
                         namesOfWarnToolboxes{1,s} = cat(2, namesOfWarnToolboxes{1,s},r);
-                        warning('The %s is not installed, but is suggested for some suite component(s)'' execution.', ...
-                            toolboxManifest(r).Name);
                     case 2
                         % Warn of toolbox's absense and flag to halt execution upon dependant(s)' initialization
                         haltMissingToolboxes(s) = true;
                         namesOfHaltToolboxes{1,s} = cat(2, namesOfHaltToolboxes{1,s},r);
-                        warning('The %s is not installed, but is required for some suite component(s)'' execution.', ...
-                            toolboxManifest(r).Name);
                 end
             end
         end
