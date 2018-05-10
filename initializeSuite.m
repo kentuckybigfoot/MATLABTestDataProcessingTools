@@ -60,7 +60,7 @@ function [  ] = initializeSuite( invokingScriptsInfo )
     % Get MathWorks products installed
     productsVersionInformation = ver;
     productsInstalled = string({productsVersionInformation(:).Name});
-    productsInstalled([23, 22, 19, 7]) = []; %Uncomment and specify rows of toolboxes to simulate missing
+   % productsInstalled([23, 22, 19, 7]) = []; %Uncomment and specify rows of toolboxes to simulate missing
     
     % Compare processing suite toolbox dependences again string-array of installed products
     for r = 1:size(toolboxManifest,2)

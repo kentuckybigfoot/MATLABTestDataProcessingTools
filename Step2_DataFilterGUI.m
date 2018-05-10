@@ -8,7 +8,7 @@ function Step2_DataFilterGUI
 %
 
 %Initialize suite
-%initializeSuite(mfilename('fullpath'))
+initializeSuite(mfilename('fullpath'))
 
 fileDir = ''; %Directory file is located in
 filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
@@ -661,7 +661,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         end
     end
 
-    function fir1FilterConfig(hObject, eventData, handles) %#ok<INUSD>
+    function fir1FilterConfig(hObject, eventData, handles) %#ok<INUSD>     
         %Switch between which filter parameter was modified
         switch hObject.Tag
             case 'fir1FilterType'
@@ -682,16 +682,14 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         end
         if fir1IsReadyToFilter
             filterGUI.filterDesign.fir1.filterDataButton.Enable = 'On';
-            if strcmp(eventData.Key, 'return')
-                fir1FilterData();
-            end
        else
            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'Off';
        end
     end
 
     function isReadyToFilter = fir1IsReadyToFilter()
-        if all([~isempty(fir1FilterType), ~isempty(fir1Order), ~isempty(fir1Freq)])
+        if all([~isempty(fir1FilterType), ~isempty(fir1Order), ~isempty(fir1Freq)]) ...
+                && all(~isnan([fir1FilterType, fir1Order, fir1Freq])) 
             isReadyToFilter = true;
         else
             isReadyToFilter = false;
