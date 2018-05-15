@@ -7,13 +7,13 @@ function Step2_DataFilterGUI
 %   Copyright 2016-2018 Christopher L. Kerner.
 %
 
-%Initialize suite
+% Initialize suite
 initializeSuite(mfilename('fullpath'))
 
 fileDir = ''; %Directory file is located in
 filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
 
-%List of variables to be ignored when generating table of variables present within file.
+% List of variables to be ignored when generating table of variables present within file.
 doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterParameter', 'A', 'B', 'C', 'D', ...
     'E', 'F', 'G', 'H'}; 
 
@@ -22,13 +22,13 @@ fullFilename = fullfile(fileDir,filename);
 m = matfile(fullFilename, 'Writable', true);
 fileVariables = who('-file', fullFilename);
 
-%Dimensions of figure script was developed using initially (See resizeProtection function below)
+% Dimensions of figure script was developed using initially (See resizeProtection function below)
 originalFigurePosPixels = [9 9 1264 931];
 
-%General script variables
+% General script variables
 filterManifest = [];
 
-%General records regarding data being filtered.
+% General records regarding data being filtered.
 varList       = [];
 varName       = [];
 tempName      = [];
@@ -36,14 +36,14 @@ originalData  = [];
 modifiedData  = [];
 filteredData  = [];
 
-%Initial DSP values to assure globalism and etc.
-Fs = 0;  % Sampling frequency                    
-T  = 0;  % Sampling period       
-L  = 0;  % Length of signal
-t  = 0;  % Time vector
+% Initial DSP values to assure globalism and etc.
+Fs = 0;              % Sampling frequency                    
+T  = 0;  %#ok<NASGU> % Sampling period       
+L  = 0;              % Length of signal
+t  = 0;  %#ok<NASGU> % Time vector
 decimationFactor = NaN;
 
-%fir1 Filter Constants
+% fir1 Filter Constants
 fir1FilterType      = 'low';
 fir1FilterTypeValue = 1;
 fir1Order           = [];
@@ -266,11 +266,12 @@ filterGUI.filterDesign.fir1.filterWnTextBox = uicontrol( ...
 
 filterGUI.filterDesign.fir1.filterDataButton = uicontrol( ...
     'Parent', filterGUI.filterDesign.panel, ...
+    'Tag', 'fir1FilterButton', ...
     'String', 'Filter', ...
     'Enable', 'Off', ...
     'Units', 'normalized', ...
     'Position', [0.021 0.3135 0.29 0.085], ...
-    'Callback', @fir1FilterData);
+    'Callback', @fir1FilterConfig);%@fir1FilterData);
 
 %Data Display Control
 filterGUI.filterDesign.showOriginalData.text = uicontrol( ...
@@ -608,7 +609,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         
         %Ensure proper feature options are avaliable now.
         set([filterGUI.spectralAnalysis.freqButtons.group.option1Button, filterGUI.spectralAnalysis.freqButtons.group.option2Button], 'Enable', 'On');
-        reactivateButton(filterGUI.spectralAnalysis.analyzeButton);
+        activateButton(filterGUI.spectralAnalysis.analyzeButton);
     end
 
     function enableDecimate(hObject, eventData, handles) %#ok<INUSD,INUSL>
@@ -628,7 +629,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
             modifiedData = decimate(originalData, decimationFactor);
             spectralAnalysis();
         end
-        reactivateButton(filterGUI.spectralAnalysis.decimation.button)
+        activateButton(filterGUI.spectralAnalysis.decimation.button)
     end
 
     function changeFrequencyUnits(hObject, eventData, handles) %#ok<INUSD,INUSL>
@@ -661,27 +662,61 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         end
     end
 
-    function fir1FilterConfig(hObject, eventData, handles) %#ok<INUSD>     
-        %Switch between which filter parameter was modified
+    function fir1FilterConfig(hObject, eventData, handles)   %#ok<INUSD>
+        [fir1FilterTypeTmp, fir1OrderTmp, fir1FreqTmp] = deal(fir1FilterType, fir1Order, fir1Freq);
+        isDirectCall = false();
+        
+    	%Switch between which filter parameter was modified
         switch hObject.Tag
             case 'fir1FilterType'
                 switch hObject.String{hObject.Value}
                     case 'Lowpass'
-                        fir1FilterType = 'low';
+                        [fir1FilterType, fir1FilterTypeTmp] = deal('low');
                     case 'Highpass'
-                        fir1FilterType = 'high';
+                        [fir1FilterType, fir1FilterTypeTmp] = deal('high');
                     case 'Bandpass'
-                        fir1FilterType = 'bandpass';
+                        [fir1FilterType, fir1FilterTypeTmp] = deal('bandpass');
                     case 'Stopband'
-                        fir1FilterType = 'stop';
+                        [fir1FilterType, fir1FilterTypeTmp] = deal('stop');
                 end
             case 'fir1FilterOrder'
-                fir1Order = str2double(hObject.String);
+                fir1OrderTmp = str2double(hObject.String);
+                
+                if isnumeric(fir1OrderTmp)
+                    fir1Order = fir1OrderTmp;
+                else
+                    fir1OrderTmp = [];
+                end
             case 'fir1FilterFreq'
-                fir1Freq = str2double(hObject.String);
+                fir1FreqTmp = str2double(hObject.String);
+                
+                if isnumeric(fir1FreqTmp)
+                    fir1Freq = fir1FreqTmp;
+                end
+            case 'fir1FilterButton'
+                isDirectCall = true();
         end
+        
         if fir1IsReadyToFilter
-            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'On';
+            activateButton(filterGUI.filterDesign.fir1.filterDataButton)
+            
+            if isDirectCall || (isprop(eventData, 'Key') && strcmp(eventData.Key, 'return'))
+                deactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
+                
+                % Design filter
+                b = fir1(fir1OrderTmp, fir1FreqTmp, fir1FilterTypeTmp);
+                
+                % Filter data
+                filteredData = filtfilt(b,1,originalData);
+                
+                % Present filtered data
+                filterAxes.p2.XData = m.NormTime;
+                filterAxes.p2.YData = filteredData;
+                
+                % Active appropriate features' buttons
+                activateButton(filterGUI.generalOperations.saveButton)
+                activateButton(filterGUI.filterDesign.fir1.filterDataButton)
+            end             
        else
            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'Off';
        end
@@ -689,25 +724,28 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
 
     function isReadyToFilter = fir1IsReadyToFilter()
         if all([~isempty(fir1FilterType), ~isempty(fir1Order), ~isempty(fir1Freq)]) ...
-                && all(~isnan([fir1FilterType, fir1Order, fir1Freq])) 
+                && all(~isnan([fir1FilterType, fir1Order, fir1Freq]))
             isReadyToFilter = true;
         else
             isReadyToFilter = false;
         end
     end
-
+    %{
     function fir1FilterData(hObject, eventData, handles) %#ok<INUSD>
         deactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
-        b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        if ~isempty(handles)
+            b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        else
+           b = fir1(fir1Order, fir1Freq, fir1FilterType);
         filteredData = filtfilt(b,1,originalData);
         
         filterAxes.p2.XData = m.NormTime;
         filterAxes.p2.YData = filteredData;
         
         filterGUI.generalOperations.saveButton.Enable = 'On';
-        reactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
+        activateButton(filterGUI.filterDesign.fir1.filterDataButton)
     end
-
+    %}
     function modifyDataDisplay(hObject, eventData, handles) %#ok<INUSD,INUSL>
         %orig data, filt data, legend addition
         switch eventData.NewValue.Tag
@@ -729,7 +767,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
     end
     
     %Created function for mundane task so as to have method for future behavior expansion.
-    function reactivateButton(obj)
+    function activateButton(obj)
         obj.Enable = 'On';
         drawnow
     end
