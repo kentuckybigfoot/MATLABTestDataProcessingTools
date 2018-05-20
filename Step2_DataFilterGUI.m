@@ -7,13 +7,13 @@ function Step2_DataFilterGUI
 %   Copyright 2016-2018 Christopher L. Kerner.
 %
 
-% Initialize suite
-initializeSuite(mfilename('fullpath'))
+%Initialize suite
+%initializeSuite(mfilename('fullpath'))
 
 fileDir = ''; %Directory file is located in
 filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
 
-% List of variables to be ignored when generating table of variables present within file.
+%List of variables to be ignored when generating table of variables present within file.
 doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterParameter', 'A', 'B', 'C', 'D', ...
     'E', 'F', 'G', 'H'}; 
 
@@ -22,13 +22,16 @@ fullFilename = fullfile(fileDir,filename);
 m = matfile(fullFilename, 'Writable', true);
 fileVariables = who('-file', fullFilename);
 
-% Dimensions of figure script was developed using initially (See resizeProtection function below)
+% Check if signals were previously filtered using legacy system.
+checkForLegacyManifest();
+
+%Dimensions of figure script was developed using initially (See resizeProtection function below)
 originalFigurePosPixels = [9 9 1264 931];
 
-% General script variables
+%General script variables
 filterManifest = [];
 
-% General records regarding data being filtered.
+%General records regarding data being filtered.
 varList       = [];
 varName       = [];
 tempName      = [];
@@ -36,14 +39,14 @@ originalData  = [];
 modifiedData  = [];
 filteredData  = [];
 
-% Initial DSP values to assure globalism and etc.
+%Initial DSP values to assure globalism and etc.
 Fs = 0;              % Sampling frequency                    
 T  = 0;  %#ok<NASGU> % Sampling period       
 L  = 0;              % Length of signal
 t  = 0;  %#ok<NASGU> % Time vector
 decimationFactor = NaN;
 
-% fir1 Filter Constants
+%fir1 Filter Constants
 fir1FilterType      = 'low';
 fir1FilterTypeValue = 1;
 fir1Order           = [];
@@ -123,8 +126,7 @@ filterGUI.spectralAnalysis.decimation.textbox = uicontrol( ...
     'Style', 'edit', ...
     'Tag', 'decFactor', ...
     'Units', 'normalized', ...
-    'Position', [0.26 0.65 0.35 0.25], ...
-    'KeyReleaseFcn', @enableDecimate);
+    'Position', [0.26 0.65 0.35 0.25]);
     
 filterGUI.spectralAnalysis.decimation.button = uicontrol( ...
     'Parent', filterGUI.spectralAnalysis.panel, ...
@@ -228,7 +230,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection = uicontrol( ...
     'Value', fir1FilterTypeValue, ...
     'Units', 'normalized', ...
     'Position', [0.177 0.6685 0.4 0.085], ...
-    'Callback', @fir1FilterConfig);
+    'Callback', @fir1FilterHandler);
 
 filterGUI.filterDesign.fir1.filterOrderText = uicontrol( ...
     'Parent', filterGUI.filterDesign.panel, ...
@@ -244,8 +246,7 @@ filterGUI.filterDesign.fir1.filterOrderTextBox = uicontrol( ...
     'Style', 'edit', ...
     'String', num2str(fir1Order), ...
     'Units', 'normalized', ...
-    'Position', [0.177 0.5800 0.5 0.105], ...
-    'KeyReleaseFcn', @fir1FilterConfig);
+    'Position', [0.177 0.5800 0.5 0.105]);
 
 filterGUI.filterDesign.fir1.filterWnText = uicontrol( ...+
     'Parent', filterGUI.filterDesign.panel, ...
@@ -261,17 +262,15 @@ filterGUI.filterDesign.fir1.filterWnTextBox = uicontrol( ...
     'Style', 'edit', ...
     'String', num2str(fir1Freq), ...
     'Units', 'normalized', ...
-    'Position', [0.177 0.4435 0.5 0.105], ...
-    'KeyReleaseFcn', @fir1FilterConfig);
+    'Position', [0.177 0.4435 0.5 0.105]);
 
 filterGUI.filterDesign.fir1.filterDataButton = uicontrol( ...
     'Parent', filterGUI.filterDesign.panel, ...
-    'Tag', 'fir1FilterButton', ...
     'String', 'Filter', ...
     'Enable', 'Off', ...
     'Units', 'normalized', ...
     'Position', [0.021 0.3135 0.29 0.085], ...
-    'Callback', @fir1FilterConfig);%@fir1FilterData);
+    'Callback', @fir1FilterData);
 
 %Data Display Control
 filterGUI.filterDesign.showOriginalData.text = uicontrol( ...
@@ -487,6 +486,20 @@ fir1FilterTypeBoxHeight = filterGUI.filterDesign.fir1.filterTypeSelection.Extent
 fir1FilterTypeBoxDistFromBottom = filterGUI.filterDesign.fir1.filterTypeSelection.Position(2);
 filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxDistFromBottom + fir1FilterTypeBoxHeight;
 
+% Find the underling Java object reference of the spectral analysis textbox(es) and set a keypress callback so that later
+% the entered contents may be readily read by the script without having to press enter following entry.
+filterGUI.spectralAnalysis.decimation.textboxObj = findjobj(filterGUI.spectralAnalysis.decimation.textbox);
+
+set(filterGUI.spectralAnalysis.decimation.textboxObj, 'KeyPressedCallback', @decimateHandler);
+
+% Find the underling Java object reference of the fir1 filter design textboxes and set a keypress callback so that later the
+% entered contents may be readily read by the script without having to press enter following entry.
+filterGUI.filterDesign.fir1.filterOrderTextBoxObj = findjobj(filterGUI.filterDesign.fir1.filterOrderTextBox);
+filterGUI.filterDesign.fir1.filterWnTextBoxObj = findjobj(filterGUI.filterDesign.fir1.filterWnTextBox);
+
+set(filterGUI.filterDesign.fir1.filterOrderTextBoxObj, 'KeyPressedCallback', @fir1FilterHandler);
+set(filterGUI.filterDesign.fir1.filterWnTextBoxObj, 'KeyPressedCallback', @fir1FilterHandler);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Corresponding Nested Functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -506,16 +519,15 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
             %Else... Carry on, have a good day.
         end
         
-        %See if user is switching data file variables
+        % See if user is switching data file variables
         varNameOld = varName;
         
-        %Get name of variable user has selected and then load data for it
+        % Get name of variable user has selected and then load data for it
         varName = varList{eventData.Indices(1,1)};
         originalData = m.(varName);
         
-        %Check if this is the user's first variable selection. If it is,
-        %proceed to initial signal plotting. If not, user is switching from
-        %one variable to the other, and script must reset.
+        % Check if this is the user's first variable selection. If it is, proceed to initial signal plotting. If not, user
+        % is switching fromone variable to the other, and script must reset.
         if ~isempty(varNameOld) && ~strcmp(varNameOld, varName)
             resetManifestdisplay();
             resetSpectralAnalysis();
@@ -612,23 +624,42 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         activateButton(filterGUI.spectralAnalysis.analyzeButton);
     end
 
-    function enableDecimate(hObject, eventData, handles) %#ok<INUSD,INUSL>
-        if ~isempty(originalData)
-            filterGUI.spectralAnalysis.decimation.button.Enable = 'On';
+    function decimateHandler(hObject, eventData, handles) %#ok<INUSD>
+        % Handles input validation, setting decimation factor, and updating decimate button. Fail-safe for disabled decimate
+        % button if decimation factor is invalid.
+        if ~isempty(originalData) && isDecimateInpValid(eventData.getKeyCode)
+            % Valid character for decimation factor entered, set decimation factor
+            setDecimationFactor(hObject);
+            
+            % Check for valid decimation factor, and display decimate button if so
+            if isDecimateValid(decimationFactor)
+                activateButton(filterGUI.spectralAnalysis.decimation.button);
+            end
+        else
+            % Fail-safe to decimate box disabled
+            deactivateButton(filterGUI.spectralAnalysis.decimation.button);
         end
         
-        if strcmp(eventData.Key, 'return')
+        if eventData.getKeyCode == 10 && isDecimateValid(decimationFactor)
+            % Check if enter-key was pressed in editbox and that decimation factor is valid. If so, decimate.
             decimateData();
-        end     
+        end
     end
 
     function decimateData(hObject, eventData, handles) %#ok<INUSD>
+        % Deactivates the decimate button until decimation is complete
         deactivateButton(filterGUI.spectralAnalysis.decimation.button)
-        decimationFactor = str2double(filterGUI.spectralAnalysis.decimation.textbox.String);
-        if decimationFactor > 1
-            modifiedData = decimate(originalData, decimationFactor);
-            spectralAnalysis();
+
+        % Ensure decimation factor is valid before continuing
+        if ~isDecimateValid(decimationFactor)
+            return
         end
+        
+        % Proceed with decimating data, then automatically perform a spectral analysis
+        modifiedData = decimate(originalData, decimationFactor);
+        spectralAnalysis();
+        
+        % Re-enable decimate button
         activateButton(filterGUI.spectralAnalysis.decimation.button)
     end
 
@@ -662,90 +693,71 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         end
     end
 
-    function fir1FilterConfig(hObject, eventData, handles)   %#ok<INUSD>
-        [fir1FilterTypeTmp, fir1OrderTmp, fir1FreqTmp] = deal(fir1FilterType, fir1Order, fir1Freq);
-        isDirectCall = false();
+%% FIR1 Filter Functions
+    function fir1FilterHandler(hObject, eventData, handles) %#ok<INUSD>
+        % Handles input for fir1 filter parameters' editboxes.
         
-    	%Switch between which filter parameter was modified
-        switch hObject.Tag
-            case 'fir1FilterType'
-                switch hObject.String{hObject.Value}
-                    case 'Lowpass'
-                        [fir1FilterType, fir1FilterTypeTmp] = deal('low');
-                    case 'Highpass'
-                        [fir1FilterType, fir1FilterTypeTmp] = deal('high');
-                    case 'Bandpass'
-                        [fir1FilterType, fir1FilterTypeTmp] = deal('bandpass');
-                    case 'Stopband'
-                        [fir1FilterType, fir1FilterTypeTmp] = deal('stop');
+        if superIsField(hObject, 'Tag') && strcmp(hObject.Tag, 'fir1FilterType')
+            setFir1FilterType(hObject);
+        elseif superIsField(hObject, 'Name')
+            if isFir1InpValid(hObject, eventData.getKeyCode)
+                switch hObject.Name
+                    case 'fir1FilterOrder'
+                        setFir1FilterOrder(hObject.getText);
+                    case 'fir1FilterFreq'
+                        setFir1FilterFreq(hObject.getText);
                 end
-            case 'fir1FilterOrder'
-                fir1OrderTmp = str2double(hObject.String);
-                
-                if isnumeric(fir1OrderTmp)
-                    fir1Order = fir1OrderTmp;
-                else
-                    fir1OrderTmp = [];
-                end
-            case 'fir1FilterFreq'
-                fir1FreqTmp = str2double(hObject.String);
-                
-                if isnumeric(fir1FreqTmp)
-                    fir1Freq = fir1FreqTmp;
-                end
-            case 'fir1FilterButton'
-                isDirectCall = true();
+            end
+        else
+            error('Unable to determine action to be performed.')
         end
         
-        if fir1IsReadyToFilter
-            activateButton(filterGUI.filterDesign.fir1.filterDataButton)
+        % Check if fir1 filter design parameters are valid. 
+        % 	If filter parameters are valid, enable filter button and then filter data if enter button was pressed.
+        % 	for all else otherwise, ensure that filter button is disabled.
+        % Note the passing of the appropriate variable to each validation function. This was done to aid in extensibility.
+        if ~isempty(originalData) && isFir1FilterTypeValid(fir1FilterType) && isFir1FilterOrderValid(fir1Order) ...
+                && isFir1FilterFreqValid(fir1Freq)
             
-            if isDirectCall || (isprop(eventData, 'Key') && strcmp(eventData.Key, 'return'))
-                deactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
-                
-                % Design filter
-                b = fir1(fir1OrderTmp, fir1FreqTmp, fir1FilterTypeTmp);
-                
-                % Filter data
-                filteredData = filtfilt(b,1,originalData);
-                
-                % Present filtered data
-                filterAxes.p2.XData = m.NormTime;
-                filterAxes.p2.YData = filteredData;
-                
-                % Active appropriate features' buttons
-                activateButton(filterGUI.generalOperations.saveButton)
-                activateButton(filterGUI.filterDesign.fir1.filterDataButton)
-            end             
-       else
+            % Enable filter button
+            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'On';
+            
+            % Filter data if enter button was pressed
+            if superIsField(hObject, 'Name') && eventData.getKeyCode == 10
+                fir1FilterData();
+            end
+        else
+           % Disable filter button
            filterGUI.filterDesign.fir1.filterDataButton.Enable = 'Off';
        end
     end
 
-    function isReadyToFilter = fir1IsReadyToFilter()
-        if all([~isempty(fir1FilterType), ~isempty(fir1Order), ~isempty(fir1Freq)]) ...
-                && all(~isnan([fir1FilterType, fir1Order, fir1Freq]))
-            isReadyToFilter = true;
-        else
-            isReadyToFilter = false;
-        end
-    end
-    %{
     function fir1FilterData(hObject, eventData, handles) %#ok<INUSD>
+        % Quick check to make sure the required conditions for filtering are met.
+        if isempty(originalData) || ~isFir1FilterTypeValid(fir1FilterType) || ~isFir1FilterOrderValid(fir1Order) ...
+                || ~isFir1FilterFreqValid(fir1Freq)
+            return
+        end
+        
+        % Disable filter button until design and application of filter is complete.
         deactivateButton(filterGUI.filterDesign.fir1.filterDataButton)
-        if ~isempty(handles)
-            b = fir1(fir1Order, fir1Freq, fir1FilterType);
-        else
-           b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        
+        % Design fir1 filter
+        b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        
+        % filter signal
         filteredData = filtfilt(b,1,originalData);
         
+        % Update GUI
         filterAxes.p2.XData = m.NormTime;
         filterAxes.p2.YData = filteredData;
         
-        filterGUI.generalOperations.saveButton.Enable = 'On';
+        % Re-activate the filter button and also allow the user to filtered signal
         activateButton(filterGUI.filterDesign.fir1.filterDataButton)
+        activateButton(filterGUI.generalOperations.saveButton);
     end
-    %}
+%%
+
     function modifyDataDisplay(hObject, eventData, handles) %#ok<INUSD,INUSL>
         %orig data, filt data, legend addition
         switch eventData.NewValue.Tag
@@ -875,7 +887,20 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         filterGUI.generalOperations.variablesTable.Data = varList;
         
     end
-    
+
+    function checkForLegacyManifest()
+        % If there is not a legacy filter manifest present, continue with initializing filter. Otherwise, alter user of past
+        % filtering using legacy systems, and also omitt legacy filter manifest from signal viewer.
+        if ~ismember('filterParameters', fileVariables)
+            return
+        end
+        
+        warndlg(['A filter manifest generated using a deprecated version of this GUI has been detected.', ...
+            'Proceed with extreme caution. Data may already be filtered regardless of signal viewer status.'], ...
+            'Legacy Filter Manifest Present');
+        doNotFilter{1,(size(doNotFilter,2)+1)} = 'filterParameters';
+    end
+
     function updateManifestDisplay()
         %Turn on relevent UIControls
         set(allchild(filterGUI.filterManifestDisp.panel), 'Visible', 'on');
@@ -897,7 +922,7 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
             case 'bandpass'
                 manifestValues{3} = 'Bandpass';
             case 'stop'
-                manifestValues{3} = 'Stopband';
+                manifestValues{3} = 'Bandstop';
         end
         
         %Set was behaving strangley, so I opted for a loop for time.
@@ -943,7 +968,9 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         
         filterGUI.filterManifestDisp.button.clearDefaults.Enable = 'off';
     end
-    
+
+%% Modification of GUI figure properties
+
     function resizeProtection(hObject, eventData, handles) %#ok<INUSD>
         % Two major functions performed by this function. See below.
         
@@ -1021,4 +1048,100 @@ filterGUI.filterDesign.fir1.filterTypeSelection.Position(2) = fir1FilterTypeBoxD
         end
 
     end
+%
+
+%% Data type conversion
+%
+    % Data type conversions from java types
+    function outp = jstr2double(inp)
+        outp = str2double(char(inp));
+    end
+
+    function outp = javaStr2Num(inp)
+        outp = str2num(char(inp)); %#ok<ST2NM>
+    end
+
+%% Input Validation Functions
+%
+    % Validation functions for decimation features
+    % --------------------------------------------------------------------------
+    function flag = isDecimateInpValid(inputStr)
+        flag = ~isempty(inputStr) && any(ismember(inputStr,[8, 48:57, 96:105]));
+    end
+
+    function flag = isDecimateValid(inputStr)
+        flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) && sign(inputStr) == 1;
+    end
+
+    % Validation functions for fir1 filter features
+    % --------------------------------------------------------------------------
+    function flag = isFir1InpValid(hObject, inputStr)
+        switch hObject.Name
+            case 'fir1FilterOrder'
+                allowedChars = [8, 48:57, 96:105];
+            case 'fir1FilterFreq'
+                allowedChars = [8, 32, 44, 46, 48:57, 91, 93, 96:105];
+            otherwise
+                error('Invalid means of invoking isFir1InpValid().');
+        end
+        
+        flag = ~isempty(inputStr) && any(ismember(inputStr,allowedChars));
+    end
+
+    function flag = isFir1FilterTypeValid(inputStr)
+        flag = any(strcmp(inputStr,{'low','high','bandpass','stop'}));
+    end
+
+    function flag = isFir1FilterOrderValid(inputStr)
+        flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) ...
+            && rem(inputStr,1) == 0 && sign(inputStr) == 1;
+    end
+
+    function flag = isFir1FilterFreqValid(inputStr)
+        if all(strcmp(char(inputStr),{'[',']'})) %check if row or some shit
+            % Welcome to the shit show
+        else
+            flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) ...
+                && sign(inputStr) == 1 && inputStr > 0 && inputStr <= 1;
+        end
+    end
+%
+
+%% Set variable functions
+%
+    % Set Variable functions for spectral analysis
+    % --------------------------------------------------------------------------
+    function setDecimationFactor(hObject)
+        decimationFactor = jstr2double(hObject.getText);
+    end
+    
+    % Set variable functions for fir1 filter
+    % --------------------------------------------------------------------------
+    function setFir1FilterType(hObject)
+        switch hObject.String{hObject.Value}
+            case 'Lowpass'
+                fir1FilterType = 'low';
+            case 'Highpass'
+                fir1FilterType = 'high';
+            case 'Bandpass'
+                fir1FilterType = 'bandpass';
+            case 'Bandstop'
+                fir1FilterType = 'stop';
+            otherwise
+                warning('Invalid fir1 filter type')
+        end
+    end
+
+    function setFir1FilterOrder(inputStr)
+    	fir1Order = jstr2double(inputStr);
+    end
+
+    function setFir1FilterFreq(inputStr)      
+        if all(strcmp(inputStr,{'[',']'}))
+            fir1Freq = jstr2num(inputStr);
+        else
+            fir1Freq = jstr2double(inputStr);
+        end
+    end
+%
 end
