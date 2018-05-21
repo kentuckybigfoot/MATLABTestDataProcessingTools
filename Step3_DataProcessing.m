@@ -1,6 +1,10 @@
 %UNTITLED4 Summary of this function goes here
 %   Detailed explanation goes here
-
+% Setup Perimeters
+%   - ProcessFilePath       -
+%   - ProcessFilePath       -
+%   - ProcessFilePath       -
+%   - ProcessSuperSet       -
 %
 %   Copyright 2017-2018 Christopher L. Kerner.
 %
@@ -21,7 +25,7 @@ addpath(genpath('dataProcessingSubroutines'))
 
 %%
 
-%Post-Process Component Variables
+%Post-Processing Script Setup Parameters
 ProcessFilePath              = '';
 ProcessFileName              = '';
 ProcessShearTab              = getShearTab(ProcessFileName);
@@ -77,6 +81,14 @@ m = matfile(ProcessFileName, 'Writable', true);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load coordinates of wire-pots.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Coordinates are established using the bottom-most left-exterior of the column, and are then in relation back to the center
+% of the wire-pot's hook when WPs are retracted to their capability within their house. 
+%	- The extreme face containing the "pivot" hole of the column when longitunal of one's body is considered the "column's
+%     bottom"
+%   - (x,y) = (0,0) is the lower most-extreme point to the left at the bottom of the column when standing towards it long.
+%   - Up is considered the longitudinal direction of the column when one's body is directly facing the bottom of the column.
+%       - This is coordinate "x"
+%   
 WPPositionX = {[14.2025;14.2025;2.47846;2.47846;0;02.47846;2.47846;4.9375;8.875;0;0;14.2025;14.2025], ...
     [14.265;14.2025;2.47846;2.47846;0;0;2.47846;2.47846;0;0;0;0;14.265;14.2025], ...
     [-0.39;-0.39;11.39654;11.39654;0;0;11.39654;11.39654;4.9375;8.875;0;0;-0.39;-0.39], ...
