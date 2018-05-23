@@ -640,8 +640,15 @@ if Process.BeamRotation == true
         [row, ~] = find(tempTheta > 25);
         tempTheta(row) = tempTheta(row) - 360;
         
+        % Correct rotation direction
+        if ismember(ProcessShearTab,[1,3])
+            mult = -1;
+        else
+            mult = 1;
+        end
+        
         %Save beam rotations
-        m.beamRotation(1:lengthOfWP,1) = tempTheta;
+        m.beamRotation(1:lengthOfWP,1) = mult.*(tempTheta.*(pi/180));
     end
     
     %Process beam COR
