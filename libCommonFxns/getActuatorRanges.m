@@ -56,7 +56,7 @@ function [ minMaxRanges, LVDTMinMax ] = getActuatorRanges( wp, increment )
     % Present minima/maxima ranges based on where MTS LVDT reads actuator extension is 0 inches. Record as:
     % minMaxRanges(:,3) -> Beginning range of minima/maxima using actuator at 0 in. as reference
     % minMaxRanges(:,4) -> Ending range of minima/maxima using actuator at 0 in. as reference
-    minMaxRanges(1,3) = knnsearch(wp(minMaxRanges(r,1):minMaxRanges(r,2),1),0);
+    minMaxRanges(1,3) = knnsearch(wp(minMaxRanges(1,1):minMaxRanges(1,2),1),0);
 
     for r = 2:sizeLVDTMinMax
         rangeFromZero = minMaxRanges(r,1) + knnsearch(wp(minMaxRanges(r,1):minMaxRanges(r,2),1),0);
