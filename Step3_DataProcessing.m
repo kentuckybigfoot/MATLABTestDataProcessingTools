@@ -1,5 +1,5 @@
 %% Step3_DataProcessing.m Performs post-processing of MAT-files containing experimental data (EXPAND FOR DOCUMENTATION)
-%   Detailed explanation goes here
+%
 % Setup Perimeters
 %   - ProcessFilePath       - Required. Character-array-type. Contains the directory path in which located is the file to be
 %                             post-processed. Optional is inclusion of a concluding slash in the directory path name.
@@ -14,18 +14,25 @@
 %   - ProcessSuperSet       - Recommended. String-type. Specifies the post-processing tasks to be performed upon execution.
 %                             The options for selecting tasks to be performed are listed below, and are subsequently provided
 %                             alongside the processes' output. Additional information may be found in primary documentation.
+%                             May be overriden using "Process.Force" structure where syntax is "Process.Force.X = true/false'
+%                             X is the name of any subcomponent of this script.
 %       - ProcessSuperSet Options:
-%       - 'all' -
-%       - 'consolidation' -
-%       - 'Rotation'
-%       - 'momRotHyst'
-%       - 'forces'
-%       - 'XXXX-noConsolidation' - 
-%       - 'disabled'
-%       - 'allDiag'
-%       MENTION Process.Force!!!
-%        
+%           - allStbl
+%           - expOnly
+%           - diag
+%           - consolidation
+%           - moment
+%           - rotation
+%           - momRot
+%           - 'EnergyDissipated
+%           - forces
+%       
+%       - Process.Force Options:
+%           - 'ConsolidateSGs', 'ConsolidateWPs', 'ConsolidateLCs', 'ConsolidateLPs', 'WPAngles', 'WPProperties', 'WPCoords',
+%             'ConfigLPs', 'BeamRotation', 'StrainProfiles', 'CenterOfRotation', 'Forces', 'Moments', 'EQM', 
+%             'EnergyDissipated'
 %                             
+% See full documentation "3) Importing, Filtering, and Processing Data in MATLAB" for more information.
 %
 %   Copyright 2017-2018 Christopher L. Kerner.
 %
@@ -39,7 +46,7 @@ initializeSuite(mfilename('fullpath'))
 
 %% Post-Processing Script Setup Parameters
 ProcessFilePath              = '';
-ProcessFileName              = 'FS Testing - ST3 - Test 1 - 08-24-16.mat';
+ProcessFileName              = '';
 ProcessShearTab              = getShearTab(ProcessFileName);
 enableParallelComputing      = true;
 ProcessSuperSet              = '';
@@ -717,7 +724,7 @@ end
 
 %% Calculate area of hysteresis (energy dissipated)
 %----------------------------------------------------------------------------------------------------------------------------
-if Process.Hysteresis == true
+if Process.EnergyDissipated == true
     % Calculates moment at shear tab bolt line using the distance between the center of shear tab bolt line and the center
     % of the rollers projecting from the LCs groups on reaction frames.
     
