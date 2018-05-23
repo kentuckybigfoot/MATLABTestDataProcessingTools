@@ -720,7 +720,7 @@ end
 if Process.Hysteresis == true
     % Calculates moment at shear tab bolt line using the distance between the center of shear tab bolt line and the center
     % of the rollers projecting from the LCs groups on reaction frames.
-    %allReqdVariablesExist(ProcessListOfVariables, {'wp', 'moment','beamRotation'));
+    
     disp('Calculating area of hystereses (energy dissipated)'); tic
     
     % Load values into memory for faster results
