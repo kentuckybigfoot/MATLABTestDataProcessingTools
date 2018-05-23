@@ -5,15 +5,21 @@ function [  ] = initializeSuite( invokingScriptsInfo )
     % Diagnostics: comment out the function defintion and it's end before defining the following.
     %invokingScriptsInfo = 'C:\Users\Christopher\Dropbox\Friction Connection Research\Full Scale Test Data\Data Processing Scripts\MATLABTestDataProcessingTools\Step3_DataProcessing2';
 	
-    % Get invoking suite component's filename and directory
+    %% Get invoking suite component's filename and directory
+    %------------------------------------------------------------------------------------------------------------------------
 	invokingScriptsInfoSplit = strsplit(invokingScriptsInfo, '\\');
 	invokingScriptsInfoSplitLength = length(invokingScriptsInfoSplit);
     invokingScriptsDir = strjoin(invokingScriptsInfoSplit(1:invokingScriptsInfoSplitLength-1), '\\');
 	invokingScriptsName = invokingScriptsInfoSplit{invokingScriptsInfoSplitLength};
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% Check MATLAB version and installed products
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% Check operating system
+    %------------------------------------------------------------------------------------------------------------------------
+    if any(ismac || isunix)
+        warning('This suite of tools was designed to work on Windows platforms. Unexpected behavior may occur otherwise')
+    end
+    
+	%% Check MATLAB version and installed products
+    %------------------------------------------------------------------------------------------------------------------------
     % Determine the version number of the active/invoking MATLAB instance.
 	currentVersion = version('-release');                   %Outputs '2017a', for example
     currentVersionNum = str2double(currentVersion(1:4));    %Obtains '2017' portion of example
@@ -26,7 +32,8 @@ function [  ] = initializeSuite( invokingScriptsInfo )
         error('MATLAB Release R2016b or greater required to execute suite. Currently running Release R%s', currentVersion);
     end
     
-    %% Check toolbox requirements 
+    %% Check toolbox requirements
+    %------------------------------------------------------------------------------------------------------------------------
     % - Introduction
     % Check if specific toolboxes are installed and warn user if they are not. If desired toolbox(es) is/are not installed, 
     % define flag(s) that will either warn or halt execution of suite components depending on severeity of toolbox absence.  
@@ -50,8 +57,8 @@ function [  ] = initializeSuite( invokingScriptsInfo )
     % the invoking suite component's are not installed. By default, array of logical-false. Each column correspondes to the
     % individual major components of the suite.
     numReqd = size(toolboxManifest,2);
-    haltMissingToolboxes = false(1,numReqd);
-    warnMissingToolboxes = false(1,numReqd);
+    haltMissingToolboxes = false(1,4);
+    warnMissingToolboxes = false(1,4);
     
     % Predefine cell containing numeric-arrays that contain the indices of missing toolbox(es)' names.
     namesOfWarnToolboxes = {{},{},{},{}};
@@ -87,9 +94,8 @@ function [  ] = initializeSuite( invokingScriptsInfo )
         end
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% Common Initialization Tasks
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Common Initialization Tasks
+    %------------------------------------------------------------------------------------------------------------------------
     %   Check that dir 'libCommonFxns' exists. If so, add path
     if exist(fullfile(invokingScriptsDir, 'libCommonFxns'), 'dir') == 0
         error('Unable to locate required directory ''libCommonFxns'' in the directory containing %s.m.\nCheck %s', ...
@@ -153,6 +159,7 @@ function [  ] = initializeSuite( invokingScriptsInfo )
     
     %Modify MATLAB preferences
     if ~haltPrefMods
+    %}
         % Display right-hand text limit
         com.mathworks.services.Prefs.setBooleanPref('EditorRightTextLineVisible', true);
         
@@ -165,7 +172,7 @@ function [  ] = initializeSuite( invokingScriptsInfo )
         % Auto-wrap comments at 125 columns.
         com.mathworks.services.Prefs.setBooleanPref('EditorAutoWrapComments', true);
         com.mathworks.services.Prefs.setIntegerPref('EditorMaxCommentWidth', 125);
-        
+        %{
         % Enable code folding for if/else and function blocks, for-loops, and section blocks. Some of these may be set to enabled by
         % default but occasionally an improper shut down of MATLAB will ruin them...
         com.mathworks.services.Prefs.setBooleanPref('Editorcode-folding-enable', true);
@@ -179,9 +186,8 @@ function [  ] = initializeSuite( invokingScriptsInfo )
     end
     %}
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	% Suite-Component Specific Initialization Tasks
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	%% Suite-Component Specific Initialization Tasks
+    %------------------------------------------------------------------------------------------------------------------------
     % Determine the suite component being executed. Although componentExec looks ugly and redundant, the method used is still
     % more efficient than using regexp, cellfun, or the like. Additionally, the inclusion of the 'IgnoreCase' option results
     % in a 5% decrease in speed but, considering the already near-instantaneous execution given the limited number of tasks,
