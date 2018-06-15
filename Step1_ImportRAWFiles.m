@@ -1,22 +1,38 @@
-%To-do
-%Add toolbox checks
-%Document
-%Fix limitation of Run parameter posistion being set in findRawsInDirectory()
-
-%Clear all isn't recommended, but is used to prevent any stragglers
-clear all
+%% Step1_ImportRAWFiles.m imports PI6600 RAW-files containing recorded experimental aquisition data, then exports to MAT-file
+%
+% Setup Parameters
+%   - RAWDirectory      -> Required. String specifying the folder-path containng RAW-files to be imported.
+%
+%   - saveDir           -> Required. String specifying the folder-path to save the resulting MAT-file containing imported
+%                          PI6600 experimental aquisition data.
+%
+%   - saveName          -> Required. Title of the resulting MAT-file containing imported PI6600 experimental aquisition data.
+%
+%   - rangeToImport     -> Required. Test number (range) from RAW-files' filenames specified in whole digits increments of
+%                          1000 (i. e. Test 1 -> 1000, Test 2 -> 2000, etc). See usuage notes for more information.
+%
+%   - decimationFactor  -> Optional. Default 0. Whole-number integer specifying factor to decimate imported data by.
+%
+%   - decimationFilterType   -> Optional. Default 'fir'. String that prescribes the application or abscence of an
+%                               anti-aliasing filter during the decimation of imported data. See usuage notes for more info.
+%
+% Setup Parameters
+% 	For additional information, see complete and expanded documentation found in "3) Importing, Filtering, and Processing
+% 	Data in MATLAB.docx"
+%
+clear all %Clear all isn't recommended, but is used to prevent any stragglers
 close all
 
 %Initialize suite
 initializeSuite(mfilename('fullpath'))
 
 %File import definitions
-RAWDirectory     = '';
-saveDir          = '';
-saveName         = '';
-rangeToImport    = 0000;
-decimationFactor = 0;
-decimateType     = 'fir';
+RAWDirectory         = '';
+saveDir              = '';
+saveName             = '';
+rangeToImport        = 0000;
+decimationFactor     = 0;
+decimationFilterType = 'fir';
 
 [directoryList, runRanges] = findRawsInDirectory(RAWDirectory);
 
@@ -27,7 +43,7 @@ numberOfFilesToProcess = size(filelist,1);
 for r = 1:numberOfFilesToProcess
     p(r) = PI660RawToM(fullfile(RAWDirectory, filelist(r,:)));
     p(r).DecimateBy = decimationFactor;
-    p(r).decimateType = decimateType;
+    p(r).decimationFilterType = decimationFilterType;
     p(r).DecodeDataStamp();
     p(r).DataDumpFrameInfo();
 end
@@ -50,7 +66,7 @@ m = matfile(fullfile(saveDir,saveName), 'Writable', true);
 importManifest = importManifestHandler(3, m, numberOfFilesToProcess);
 
 %Garbage collection to maximize free memory for process
-clearvars RAWDirectory saveDir saveName default lookFor decimationFactor decimateType
+clearvars RAWDirectory saveDir saveName default lookFor decimationFactor decimationFilterType
 
 lastTime = 0;
 tic

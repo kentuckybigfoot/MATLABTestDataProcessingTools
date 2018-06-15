@@ -1,6 +1,11 @@
 % PI660RawToM 
-% This m file reads/converts PI660 RAW data files into
-% matlab/octave workspace variables. ONLY V10 files!
+% Slightly modified version of P. W. Wong's "PI6600RawToM.m" that corrects issues specific to the import of recorded LSFF
+% aquistion data, in addition to minor speed and usuage-specific improvements.
+%
+% Original description:
+%
+% PI660RawToM 
+% This m file reads/converts PI660 RAW data files intomatlab/octave workspace variables. ONLY V10 files!
 % (C) 2016 p.w. wong phil@weballey.com 
 % Pacific Instruments, Inc. Concord, CA
 % Revision History:
@@ -21,11 +26,6 @@
 % Of course, the channels parameters are also available. Just
 % gotta look inside this code.
 
-%%%
-%Look at
-% - Incorrect 4th, 5th, etc calibration factors being input
-% - removing this.Datawidths(ScanIndex) == 4 in input
-% - Add octave check
 classdef PI660RawToM < handle
     properties
         SyncPattern;
@@ -117,7 +117,7 @@ classdef PI660RawToM < handle
         fid;
         RawData;
         isHeadless = true;
-        decimateType = 'fir';
+        decimationFilterType = 'fir';
         MaxChannels = 0;
         FrameBufferSize;
         DataFrameSize;
@@ -548,13 +548,13 @@ classdef PI660RawToM < handle
                       dataarray(idx).EUData = this.EUChannelData(:,idx);
                   end
               else
-                  if this.decimateType == 'fir'
-                      dataarray.Time = decimate(this.Time',this.DecimateBy, this.decimateType);
+                  if strcmp(this.decimationFilterType, 'fir')
+                      dataarray.Time = decimate(this.Time',this.DecimateBy, this.decimationFilterType);
                       for idx = 1: this.NumberOfChannels
                           dataarray(idx).Name = this.Name(idx,:);
                           dataarray(idx).Units = this.Units(idx,:);
-                          dataarray(idx).RawADC = decimate(this.RawChannelData(:,idx),this.DecimateBy, this.decimateType);
-                          dataarray(idx).EUData = decimate(this.EUChannelData(:,idx),this.DecimateBy, this.decimateType);
+                          dataarray(idx).RawADC = decimate(this.RawChannelData(:,idx),this.DecimateBy, 'fir');
+                          dataarray(idx).EUData = decimate(this.EUChannelData(:,idx),this.DecimateBy, 'fir');
                       end
                   else
                       dataarray.Time = this.Time';
