@@ -129,8 +129,17 @@ function foundGUIComps = findGUIComps(GUIComps,pattern,varargin)
             foundGUIComps = strings(numOfResults,1);
     end
     
+    % List of non-UI related indices to remove
+    idxToRemove = [];
+    
     % Populate output data
     for r = 1:numOfResults
+        % Check if field contains a non-UI type. If so, mark for deletion, and move on. Otherwise, carry on.
+        if ~contains(class(GUIComps.(valMatchingFields{r,1})), 'matlab.ui')
+            idxToRemove = [idxToRemove; r]; %#ok<AGROW>
+            continue
+        end
+        
         switch outputType
             case 1
                 foundGUIComps(r,1) = GUIComps.(valMatchingFields{r,1});
@@ -139,6 +148,11 @@ function foundGUIComps = findGUIComps(GUIComps,pattern,varargin)
             case 3
                 foundGUIComps(r,1) = [inputname(1) '.' valMatchingFields{r}];
         end
+    end
+    
+    % Remove invalid results if present
+    if ~isempty(idxToRemove)
+        foundGUIComps(idxToRemove) = [];
     end
 end
     

@@ -8,8 +8,11 @@ function Step2_DataFilterGUI
 %
 
 %Initialize suite
-%initializeSuite(mfilename('fullpath'))
+initializeSuite(mfilename('fullpath'))
 
+%% Data Filtering GUI Setup Parameters
+% ---------------------------------------------------------------------------------------------------------------------------
+%
 fileDir = ''; %Directory file is located in
 filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
 
@@ -17,6 +20,9 @@ filename = 'FS Testing - ST3 - Test 1 - 08-24-16'; %Name of file to be filtered
 doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterParameter', 'A', 'B', 'C', 'D', ...
     'E', 'F', 'G', 'H'}; 
 
+%% Initialization Tasks
+% ---------------------------------------------------------------------------------------------------------------------------
+%
 fullFilename = fullfile(fileDir,filename);
 
 m = matfile(fullFilename, 'Writable', true);
@@ -25,13 +31,13 @@ fileVariables = who('-file', fullFilename);
 % Check if signals were previously filtered using legacy system.
 checkForLegacyManifest();
 
-%Dimensions of figure script was developed using initially (See resizeProtection function below)
+% Dimensions of figure script was developed using initially (See resizeProtection function below)
 originalFigurePosPixels = [9 9 1264 931];
 
-%General script variables
+% General script variables
 filterManifest = [];
 
-%General records regarding data being filtered.
+% General records regarding data being filtered.
 varList       = [];
 varName       = [];
 tempName      = [];
@@ -39,47 +45,46 @@ originalData  = [];
 modifiedData  = [];
 filteredData  = [];
 
-%Initial DSP values to assure globalism and etc.
+% Initial DSP values to assure globalism and etc.
 Fs = 0;              % Sampling frequency                    
-T  = 0;  %#ok<NASGU> % Sampling period       
+T  = 0;  %#ok<NASGU> % Sampling period (Placeholder)      
 L  = 0;              % Length of signal
-t  = 0;  %#ok<NASGU> % Time vector
+t  = 0;  %#ok<NASGU> % Time vector (Placeholder)
 decimationFactor = NaN;
 
-%fir1 Filter Constants
-fir1FilterType      = 'low';
-fir1FilterTypeValue = 1;
-fir1Order           = [];
-fir1Freq            = [];
+% fir1() Filter Constants
+fir1FilterType          = 'low';
+fir1FilterTypeValue     = 1;
+fir1FiltFreqType        = 0; % 0 -> undef, 1 -> lowpass/highpass filter, 2 -> bandpass/bandstop filter, 3 -> DC-0/DC-1 filter 
+fir1FiltOrd             = [];
+fir1FiltFreq            = [];
 
-%Custom Filter Design Constants
-Fpass = [];
-Fstop = [];
-Ap    = [];
-Ast   = [];
+% Custom Filter Design Constants
+% - Placeholder
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Create dialogue
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 0) General note: GUI component positions are normalized units unless otherwise modified later (as is the case with
-%    UIPanels). Position related properties are 1-by-4 double arrays that follow the standard MATLAB position defintion
-%    convention of [left, bottom, width, height].
-% 1) create the GUI figure, then axes, followed by the appropriate lines
-%    to populate axes. The variables are described as follows:
+%% Create Graphics Components of GUI
+% Notes:
+% 0) General note: GUI component positions are normalized units unless otherwise modified later. Position related properties
+%    are defined using 1-by-4 double arrays that follow the standard MATLAB convention of [left, bottom, width, height].
+% 1) Create a struct containing the GUI figure, then axes, then populate axes. The fields are as follows:
 %       axes1 -> Filtering axes
 %           * p1 -> original signal line
 %           * p2 -> Filtered signal line
 %       axes2 -> Spectral analysis axes
 %           * p3 -> power spectral density line
-%    Lastly, establish the extended data-cursor.
-% 2) Define UI components under filterGUI.* structure where "*" is a wildcard.
-% 3) Format axes (Apply titles, X & Y labels, X & Y major and minor grids)
-% 4) Apply formatting to UI components that best applies once components are fully defined and visible. Used primarily for
-%    assuring aspect ratios remain correct.
-% 5) Generate variable list and popular corresponding UI Table.
-% 6) Call it good, and eat fried balogna sandwiches. Optional arguments for a pat on the back. This isn't serious or funny.
+% 2) Define the default data cursor used within the GUI to be the extended data cursor (See extendedDataCursor()).
+% 3) Define UI components which are stored within assigned fields of the filterGUI structure.
+% 4) Perform concluding GUI initilization tasks:
+%       i)   Format axes (Apply titles, X & Y labels, X & Y major and minor grids).
+%       ii)  Populate the Signal Viewer UI table.
+%       iii) Correct Filter Design UI panel position.
+%       iv)  Find the underling Java object reference of the spectral analysis and filter design textbox(es).
+% 5) Call it good, and eat fried balogna sandwiches. Optional arguments for a pat on the back. This isn't serious or funny.
+% ---------------------------------------------------------------------------------------------------------------------------
+%
 
-%Define GUI figure
+%% Initialize GUI
+% Define GUI figure
 filterAxes.fig = figure('Visible', 'on', 'Units', 'pixels', 'OuterPosition', [0 0 1280 1024], 'CloseRequestFcn', @clearData);
 
 % Overcomes errors stemming from ResizeFcn being defined before the full initilization of related variables that occurs
@@ -99,10 +104,10 @@ filterAxes.p2 = line(filterAxes.axes1, NaN, NaN, 'Color', [0.8500, 0.3250, 0.098
 filterAxes.p3 = line(filterAxes.axes2, NaN, NaN);
 
 % Assign legend for data filtering axes but turn off visibility prior to filtering.
-filterAxes.legend1 = legend(filterAxes.axes1, {'Orig. Data', 'Filt. Data'}, 'Location', 'Best');
-filterAxes.legend1.Visible = 'Off';
+%filterAxes.legend1 = legend(filterAxes.axes1, {'Orig. Data', 'Filt. Data'}, 'Location', 'Best');
+%filterAxes.legend1.Visible = 'Off';
 
-%Assign data cursors
+% Assign data cursors
 dcm_obj = datacursormode(filterAxes.fig);
 set(dcm_obj,'UpdateFcn',@extendedDataCursor)
 
@@ -118,7 +123,7 @@ setLastGUIComp(  ...
     'Units', 'normalized', ...
     'Position', [0.8 0.872 0.182 0.1]);
 
-%Decimation
+% Decimation
 addGUIComp('SDE_dcmtn_txt');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -147,7 +152,7 @@ setLastGUIComp( ...
     'Position', [0.65 0.685 0.29 0.25], ...
     'Callback', @decimateData);
 
-%Frequency Units
+% Frequency Units
 addGUIComp('SDE_frqBtns_grp_mstr');
 setLastGUIComp( ...
 	'Type', 'uibuttongroup', ...
@@ -179,7 +184,7 @@ setLastGUIComp( ...
     'Units', 'normalized', ...
     'Position', [0 0.10 0.9 0.35]);
 
-%Analyze Button
+% Analyze Button
 addGUIComp('SDE_anlzBtns');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -200,7 +205,7 @@ setLastGUIComp( ...
     'Units', 'normalized', ...
     'Position', [0.8000 0.6450 0.1820 0.2200]);
 
-%Filter Type
+% Filter Type
 addGUIComp('filtDesg_desgMeth_txt');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -238,10 +243,11 @@ setLastGUIComp( ...
     'Tag', 'Custom', ...
     'Style', 'radiobutton', ...
     'String', 'Custom', ...
+    'Enable', 'off', ...
     'Units', 'normalized', ...
     'Position', [0.35 0 0.45 1]);
 
-%fir1 Filter Parameters
+% fir1 Filter Parameters
 addGUIComp('filtDesg_fir1_filtTypeTxt');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -258,11 +264,11 @@ setLastGUIComp( ...
     'Parent', filterGUI.filtDesg_pnl, ...
     'Tag', 'fir1FilterType', ...
     'Style', 'popupmenu', ...
-    'String', {'Lowpass', 'Highpass', 'Bandpass', 'Bandstop'}, ...
+    'String', {'Lowpass', 'Highpass', 'Bandpass', 'Bandstop', 'DC-0', 'DC-1'}, ...
     'Value', fir1FilterTypeValue, ...
     'Units', 'normalized', ...
     'Position', [0.177 0.6685 0.4 0.085], ...
-    'Callback', @fir1FilterHandler);
+    'Callback', @fir1FilterTypeHandler);
 
 addGUIComp('filtDesg_fir1_filtOrdTxt');
 setLastGUIComp( ...
@@ -280,7 +286,7 @@ setLastGUIComp( ...
     'Parent', filterGUI.filtDesg_pnl, ...
     'Tag', 'fir1FilterOrder', ...
     'Style', 'edit', ...
-    'String', num2str(fir1Order), ...
+    'String', num2str(fir1FiltOrd), ...
     'Units', 'normalized', ...
     'Position', [0.177 0.5800 0.5 0.105]);
 
@@ -300,7 +306,7 @@ setLastGUIComp( ...
     'Parent', filterGUI.filtDesg_pnl, ...
     'Tag', 'fir1FilterFreq', ...
     'Style', 'edit', ...
-    'String', num2str(fir1Freq), ...
+    'String', num2str(fir1FiltFreq), ...
     'Units', 'normalized', ...
     'Position', [0.177 0.4435 0.5 0.105]);
 
@@ -314,7 +320,7 @@ setLastGUIComp( ...
     'Position', [0.021 0.3135 0.29 0.085], ...
     'Callback', @fir1FilterData);
 
-%Data Display Control
+% Data Display Control
 addGUIComp('filtDesg_showOrig_txt');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -445,7 +451,7 @@ setLastGUIComp( ...
     'Units', 'normalized', ...
     'Position', [0.0150 0.0322 0.2050 0.1850]);
 
-%Values
+% Values
 addGUIComp('manifDisp_txt_filtMethVal');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -486,7 +492,7 @@ setLastGUIComp( ...
     'Units', 'normalized', ...
     'Position', [0.3350 0.0322 0.4150 0.1850]);
 
-%Set default values
+% Set default values
 addGUIComp('manifDisp_Btn_setDefs');
 setLastGUIComp( ...
 	'Type', 'uicontrol', ...
@@ -495,7 +501,7 @@ setLastGUIComp( ...
     'Enable', 'off', ...
     'Units', 'normalized', ...
     'Position', [0.6250 0.2625 0.3500 0.2500], ...
-    'Callback', @setDefaultFilterValues);
+    'Callback', @setDefFiltVals);
 
 addGUIComp('manifDisp_Btn_clrDefs');
 setLastGUIComp( ...
@@ -547,6 +553,9 @@ setLastGUIComp( ...
     'CellSelectionCallback', @initPlot);
 %%
 
+%% Concluding GUI Initilization Tasks
+% ---------------------------------------------------------------------------------------------------------------------------
+%
 % Assign axes titles
 title(filterAxes.axes1, 'Original/Filtered Signal');
 title(filterAxes.axes2, 'Power Spectral Density');
@@ -562,14 +571,10 @@ plotProps.XMinorGrid = 'on';
 plotProps.YMinorGrid = 'on';
 set([filterAxes.axes1, filterAxes.axes2], plotProps);
 
-% Switch UI Panels' units to pixels and then set each a fixed width so that UI Panels retain aspect ratio on resize
-
-display([getpixelposition(filterGUI.SDE_pnl); getpixelposition(filterGUI.filtDesg_pnl)]);
-
-%Get list of variables contained within MAT-file specified to be read by this script/GUI
+% Get list of variables contained within MAT-file specified to be read by this script/GUI
 varList = getVariablesToFilter();
 
-%Correct the placement of the filter type textbox.
+% Correct the placement of the filter type textbox.
 fir1FilterTypeBoxHeight = filterGUI.filtDesg_fir1_filtTypeSet.Extent(4);
 fir1FilterTypeBoxDistFromBottom = filterGUI.filtDesg_fir1_filtTypeSet.Position(2);
 filterGUI.filtDesg_fir1_filtTypeSet.Position(2) = fir1FilterTypeBoxDistFromBottom + fir1FilterTypeBoxHeight;
@@ -585,26 +590,32 @@ set(filterGUI.SDE_dcmtn_fctrSetObj, 'KeyPressedCallback', @decimateHandler);
 filterGUI.filtDesg_fir1_filtOrdSetObj = findjobj(filterGUI.filtDesg_fir1_filtOrdSet);
 filterGUI.filtDesg_fir1_filtWnSetObj = findjobj(filterGUI.filtDesg_fir1_filtWnSet);
 
-set(filterGUI.filtDesg_fir1_filtOrdSetObj, 'KeyPressedCallback', @fir1FilterHandler);
-set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandler);
+set(filterGUI.filtDesg_fir1_filtOrdSetObj, 'KeyPressedCallback', @fir1FiltOrdHandler);
+set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHandler);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Corresponding Nested Functions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+findGUI = [findGUIComps(filterGUI, 'SDE_'); findGUIComps(filterGUI, 'filtDesg_fir1_')]
+disp('hey')
+%
+
+%% Corresponding Nested Functions
+% ---------------------------------------------------------------------------------------------------------------------------
+%
+    %% initPlot() - Populate GUI's axes with selected signal's data
+    % -----------------------------------------------------------------------------------------------------------------------
     function initPlot(hObject, eventData, handles) %#ok<INUSD,INUSL>
-        %Quick check if data is filtered
+        % Quick check if data is filtered
         isDataFiltered = strcmp(string(eventData.Source.Data(eventData.Indices(1,1),2)), 'Yes');
         
-        %Very shady hack to quickly fix a bug regarding accidentally overwriting varName.
+        % Very shady hack to quickly fix a bug regarding accidentally overwriting varName.
         tempName = varList{eventData.Indices(1,1)};
         
-        %Check if just reviewing a filter manifest entry
+        % Check if just reviewing a filter manifest entry
         if eventData.Indices(1,2) == 2
             if isDataFiltered
                 updateManifestDisplay();
                 return
             end
-            %Else... Carry on, have a good day.
+            % Else... Carry on, have a good day.
         end
         
         % See if user is switching data file variables
@@ -622,11 +633,11 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             resetFilterData();
         end
         
-        %Plot variable's time-series data
+        % Plot variable's time-series data
         filterAxes.p1.XData = m.NormTime;
         filterAxes.p1.YData = originalData;
         
-        %Determine y-axis representation using variable name/type
+        % Determine y-axis representation using variable name/type
         if contains(varName,'sg')
             yLabelString = 'Strain Gauge Reading (uStrain)';
         elseif contains(varName,['wp','LVDT'])
@@ -637,12 +648,12 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             yLabelString = 'Unknown Secondary Axis Title';
         end
         
-        %Update titles to reflect variable chosen and data presented
+        % Update titles to reflect variable chosen and data presented
         title(filterAxes.axes1, sprintf('Plot of %s vs. Normal Time', varName));
         filterAxes.axes1.XLabel.String = 'Time (sec)';
         filterAxes.axes1.YLabel.String = yLabelString;
         
-        %Make sure the correct options are avaliable
+        % Make sure the correct options are avaliable
         filterGUI.SDE_dcmtn_btn.Enable = 'Off';
         filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'Off';
         filterGUI.SDE_anlzBtns.Enable = 'On';
@@ -651,18 +662,19 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             updateManifestDisplay();
         end
         
-        %Quick fix to correct filter button dissapearing once a default is set and then a different record is chosen
-        if all([~isempty(fir1FilterType), ~isempty(fir1FilterTypeValue), ~isempty(fir1Order), ~isempty(fir1Freq)])
+        % Quick fix to correct filter button dissapearing once a default is set and then a different record is chosen
+        if all([~isempty(fir1FilterType), ~isempty(fir1FilterTypeValue), ~isempty(fir1FiltOrd), ~isempty(fir1FiltFreq)])
             filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'on';
         end
     end
 
+    %% spectralAnalysis() - Generate SDE for selected signal
+    % -----------------------------------------------------------------------------------------------------------------------
     function spectralAnalysis(hObject, eventData, handles)    %#ok<INUSD>
-        deactivateButton(filterGUI.SDE_anlzBtns);
-        %Get sampling frequency.
+        disableUIComp(filterGUI.SDE_anlzBtns);
+        % Get sampling frequency.
         if contains(fileVariables, 'importManifest')
-            %Horrible method, because it assumes all files were imported
-            %with same parameters as the first file.
+            % Horrible method, because it assumes all files were imported with same parameters as the first file.
             importManifest = m.importManifest;
             if importManifest(1).decimationFactor > 0
                 Fs = (1/importManifest(1).decimationFactor)*importManifest.blockRate;
@@ -673,8 +685,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             Fs = 1/(m.NormTime(2,1)-m.NormTime(1,1));
         end
         
-        %See if decimated data is being analyzed and adjust sampling frequency accordingly. 
-        %If not, use original data
+        % See if decimated data is being analyzed and adjust sampling frequency accordingly. If not, use original data
         if isempty(modifiedData)
             dataFocus = originalData - mean(originalData);
         else
@@ -682,36 +693,38 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
            Fs = (1/decimationFactor)*Fs;
         end
         
-        %Set signal constants    
+        % Set signal constants    
         L = length(dataFocus)-1;	% Length of signal
 
-        %Run Fast Fourier Transform
+        % Run Fast Fourier Transform
         fftRun = fft(dataFocus);
         
-        %Calculate power spectral density
+        % Calculate power spectral density
         psd = fftRun.*conj(fftRun)/L;
         
         %[maxValue,indexMax] = max(abs(fftRun))
         
-        %Calculate normalized frequency in terms of pi*rad/samples. A good explanation is found at
-        %https://dsp.stackexchange.com/a/16017. Essentially, take the frequency in Hertz, multiply it by 2, then devide
-        %by the sampling frequency in hertz.
+        % Calculate normalized frequency in terms of pi*rad/samples. A good explanation is found at
+        % https://dsp.stackexchange.com/a/16017. Essentially, take the frequency in Hertz, multiply it by 2, then devide
+        % by the sampling frequency in hertz.
         f = ((Fs/L).*(0:ceil(L/2)-1))./(Fs/2);
         
-        %Set plot data
+        % Set plot data
         filterAxes.p3.XData = f(1,1:ceil(L/2));
         filterAxes.p3.YData = psd(1:ceil(L/2),1);
         
-        %Set plot titles.
+        % Set plot titles.
         title(filterAxes.axes2, sprintf('Power Spectral Density of %s', varName));
         filterAxes.axes2.XLabel.String = 'Normalized Frequency  (\times\pi rad/sample)';
         filterAxes.axes2.YLabel.String = 'Power';
         
-        %Ensure proper feature options are avaliable now.
+        % Ensure proper feature options are avaliable now.
         set([filterGUI.SDE_frqBtns_grp_op1Btn, filterGUI.SDE_frqBtns_grp_op2Btn], 'Enable', 'On');
-        activateButton(filterGUI.SDE_anlzBtns);
+        enableUIComp(filterGUI.SDE_anlzBtns);
     end
 
+    %% decimateHandler() - Handles validation of user input and activation of the signal data decimation feature
+    % -----------------------------------------------------------------------------------------------------------------------
     function decimateHandler(hObject, eventData, handles) %#ok<INUSD>
         % Handles input validation, setting decimation factor, and updating decimate button. Fail-safe for disabled decimate
         % button if decimation factor is invalid.
@@ -721,11 +734,11 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             
             % Check for valid decimation factor, and display decimate button if so
             if isDecimateValid(decimationFactor)
-                activateButton(filterGUI.SDE_dcmtn_btn);
+                enableUIComp(filterGUI.SDE_dcmtn_btn);
             end
         else
             % Fail-safe to decimate box disabled
-            deactivateButton(filterGUI.SDE_dcmtn_btn);
+            disableUIComp(filterGUI.SDE_dcmtn_btn);
         end
         
         if eventData.getKeyCode == 10 && isDecimateValid(decimationFactor)
@@ -734,9 +747,11 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         end
     end
 
+    %% decimateData() - Decimates the selected signal's data
+    % -----------------------------------------------------------------------------------------------------------------------
     function decimateData(hObject, eventData, handles) %#ok<INUSD>
         % Deactivates the decimate button until decimation is complete
-        deactivateButton(filterGUI.SDE_dcmtn_btn)
+        disableUIComp(filterGUI.SDE_dcmtn_btn)
 
         % Ensure decimation factor is valid before continuing
         if ~isDecimateValid(decimationFactor)
@@ -748,9 +763,11 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         spectralAnalysis();
         
         % Re-enable decimate button
-        activateButton(filterGUI.SDE_dcmtn_btn)
+        enableUIComp(filterGUI.SDE_dcmtn_btn)
     end
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function changeFrequencyUnits(hObject, eventData, handles) %#ok<INUSD,INUSL>
         switch eventData.NewValue.Tag
             case 'standardFreq'
@@ -764,6 +781,8 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         filterAxes.p3.XData = f(1,1:ceil(L/2));
     end
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function changeFilterDesignMethod(hObject, eventData, handles) %#ok<INUSD,INUSL>
         filtDesg_fir1Handles = findGUIComps(filterGUI,'filtDesg_fir1');
         switch eventData.NewValue.Tag
@@ -775,56 +794,102 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
     end
 
 %% FIR1 Filter Functions
-    function fir1FilterHandler(hObject, eventData, handles) %#ok<INUSD>
-        % Handles input for fir1 filter parameters' editboxes.
+% ---------------------------------------------------------------------------------------------------------------------------
+%
+    %% fir1FilterTypeHandler() - Handler for fir1 filter type popupmenu
+    % -----------------------------------------------------------------------------------------------------------------------
+    function fir1FilterTypeHandler(hObject, eventData, handles) %#ok<INUSD>
+        setFir1FiltType(hObject);
         
-        if superIsField(hObject, 'Tag') && strcmp(hObject.Tag, 'fir1FilterType')
-            setFir1FilterType(hObject);
-        elseif superIsField(hObject, 'Name')
-            if isFir1InpValid(hObject, eventData.getKeyCode)
-                switch hObject.Name
-                    case 'fir1FilterOrder'
-                        setFir1FilterOrder(hObject.getText);
-                    case 'fir1FilterFreq'
-                        setFir1FilterFreq(hObject.getText);
-                end
-            end
-        else
-            error('Unable to determine action to be performed.')
-        end
-        
-        % Check if fir1 filter design parameters are valid. 
-        % 	If filter parameters are valid, enable filter button and then filter data if enter button was pressed.
-        % 	for all else otherwise, ensure that filter button is disabled.
-        % Note the passing of the appropriate variable to each validation function. This was done to aid in extensibility.
-        if ~isempty(originalData) && isFir1FilterTypeValid(fir1FilterType) && isFir1FilterOrderValid(fir1Order) ...
-                && isFir1FilterFreqValid(fir1Freq)
-            
-            % Enable filter button
-            filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'On';
-            
-            % Filter data if enter button was pressed
-            if superIsField(hObject, 'Name') && eventData.getKeyCode == 10
-                fir1FilterData();
-            end
-        else
-           % Disable filter button
-           filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'Off';
-       end
+        if isFir1FiltDesgValid()
+            enableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+        end     
     end
 
+    %% fir1FiltOrdHandler() - Handler for fir1 filter order editbox
+    % -----------------------------------------------------------------------------------------------------------------------
+    function fir1FiltOrdHandler(hObject, eventData, handles) %#ok<INUSD>
+        % Check if keyboard input is valid
+        if isfir1FiltOrdInpValid(eventData.getKeyChar)
+            % Valid, so set fir1 filter order global
+            setFir1FiltOrd(hObject.getText)
+            
+            % Check if this input alongside with other filter design parameters are valid, and activate the 'Filter' button
+            if isFir1FiltDesgValid()
+                enableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+                
+                % Now check the Enter-key was pressed and, if so, filter data
+                if eventData.getKeyCode == 10
+                    fir1FiltHandler();
+                end
+                
+                % No need for failsafe
+                return
+            end
+        end
+        
+        % Fail-safe to disabling 'Filter' button
+        disableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+    end
+
+    %% fir1FiltFreqHandler() - Handler for fir1 filter frequency editbox
+    % -----------------------------------------------------------------------------------------------------------------------
+    function fir1FiltFreqHandler(hObject, eventData, handles) %#ok<INUSD>
+        % Check if keyboard input is valid
+        if isfir1FiltFreqInpValid(eventData.getKeyChar)
+            % Valid keyboard entry, validate the freqency editbox contents, and set related global variables accordingly
+            [fir1FiltFreqs, fir1FiltType] = validateFir1FiltFreq(hObject.getText);
+            
+            if ~isempty(fir1FiltFreqs) && fir1FiltType ~= 0
+                setFir1FiltFreq(fir1FiltFreqs);
+                setFir1FiltFreqType(fir1FiltType);
+            else
+                % Make sure 'Filter' button remains disabled, return control to parent function
+                disableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+                return
+            end
+            
+            % Check if this input alongside with other filter design parameters are valid, and activate the 'Filter' button
+            if isFir1FiltDesgValid()
+                enableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+                
+                % Now check the Enter-key was pressed and, if so, filter data
+                if eventData.getKeyCode == 10
+                    fir1FiltHandler();
+                end
+            end
+            
+            return
+        end
+        
+        % Fail-safe to disabling 'Filter' button
+        disableUIComp(filterGUI.filtDesg_fir1_filtDataBtn);
+    end
+
+    %% fir1FiltHandler() - Handles prerequisites prior to designing fir1 filter to filter signal data with
+    % -----------------------------------------------------------------------------------------------------------------------
+    function fir1FiltHandler(hObject, eventData, handles) %#ok<INUSD>
+        if isFir1FiltDesgValid()
+            fir1FilterData();
+        else
+            % Somehow in this function by mistake. Disable filter button.
+            filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'Off';
+        end
+    end
+
+    %% fir1FilterData() - Design filter using fir1 and use it to filter selected signal data
+    % -----------------------------------------------------------------------------------------------------------------------
     function fir1FilterData(hObject, eventData, handles) %#ok<INUSD>
-        % Quick check to make sure the required conditions for filtering are met.
-        if isempty(originalData) || ~isFir1FilterTypeValid(fir1FilterType) || ~isFir1FilterOrderValid(fir1Order) ...
-                || ~isFir1FilterFreqValid(fir1Freq)
+        % Quick check to make sure the required conditions for filtering are met and that we're not here by mistake.
+        if ~isFir1FiltDesgValid()
             return
         end
         
         % Disable filter button until design and application of filter is complete.
-        deactivateButton(filterGUI.filtDesg_fir1_filtDataBtn)
+        disableUIComp(filterGUI.filtDesg_fir1_filtDataBtn)
         
         % Design fir1 filter
-        b = fir1(fir1Order, fir1Freq, fir1FilterType);
+        b = fir1(fir1FiltOrd, fir1FiltFreq, fir1FilterType);
         
         % filter signal
         filteredData = filtfilt(b,1,originalData);
@@ -834,11 +899,12 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         filterAxes.p2.YData = filteredData;
         
         % Re-activate the filter button and also allow the user to filtered signal
-        activateButton(filterGUI.filtDesg_fir1_filtDataBtn)
-        activateButton(filterGUI.genOps_saveBtn);
+        enableUIComp(filterGUI.filtDesg_fir1_filtDataBtn)
+        enableUIComp(filterGUI.genOps_saveBtn);
     end
-%%
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function modifyDataDisplay(hObject, eventData, handles) %#ok<INUSD,INUSL>
         %orig data, filt data, legend addition
         switch eventData.NewValue.Tag
@@ -852,19 +918,9 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
                 filterAxes.p2.Visible = 'Off';
         end
     end
-    
-    %Created function for mundane task so as to have method for future behavior expansion.
-    function deactivateButton(obj)
-        obj.Enable = 'Off';
-        drawnow
-    end
-    
-    %Created function for mundane task so as to have method for future behavior expansion.
-    function activateButton(obj)
-        obj.Enable = 'On';
-        drawnow
-    end
 
+    %% saveFilteredData() - Replaces variable of selected signal data with its filtered version
+    % -----------------------------------------------------------------------------------------------------------------------
     function saveFilteredData(hObject, eventData, handles) %#ok<INUSD>
         %Don't forget to include a legacy script/upgrade for old filter method....
         
@@ -875,7 +931,8 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             save(fullFilename, 'filterManifest', '-append');
         end
         
-        filterManifest.(varName) = struct('filterMethod', 'fir1', 'filterType', fir1FilterType, 'filterOrder', fir1Order, 'wn', fir1Freq, 'Fpass', Fpass, 'Fstop', Fstop, 'Ap', Ap, 'Ast', Ast);
+        filterManifest.(varName) = struct('filterMethod', 'fir1', 'filterType', fir1FilterType, 'filterOrder', ...
+            fir1FiltOrd, 'wn', fir1FiltFreq, 'Fpass', [], 'Fstop', [], 'Ap', [], 'Ast', []);
         
         m.filterManifest = filterManifest;
         m.(varName) = filteredData;
@@ -886,6 +943,8 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         varList = getVariablesToFilter();
     end
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function resetDataFiltering(hObject, eventData, handles) %#ok<INUSD>
         %Used to reset the most significant components of the GUI without
         %physically restarting the GUI.
@@ -897,13 +956,16 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         %Step2_DatafilterGUI();
     end
 
+    %% clearData() - Function to clear graphics objects when closing GUI
+    % -----------------------------------------------------------------------------------------------------------------------
     function clearData(hObject, eventData, handles) %#ok<INUSD>
-        %Function used when users closes GUI. This assures that all data is
-        %deleted, and that nothing is left behind.
+        %Function used when users closes GUI. This assures that all data is deleted, and that nothing is left behind.
          delete(filterAxes.fig)
          clear
     end
- 
+
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function resetSpectralAnalysis( ~ )
         %First, clear old graphic data
         filterAxes.p3.XData = NaN;
@@ -921,6 +983,8 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         filterGUI.SDE_frqBtns_grp_op1Btn.Selected = 'On';
     end
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function resetFilterData( ~ )
         %First, clear old graphic data
         set([filterAxes.p1, filterAxes.p2], {'XData','YData'}, {NaN,NaN});
@@ -932,7 +996,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         filteredData = [];
         filterGUI.filtDesg_fir1_filtTypeSet.Value = fir1FilterTypeValue;
         set([filterGUI.filtDesg_fir1_filtOrdSet, filterGUI.filtDesg_fir1_filtWnSet], {'String'}, ...
-            {num2str(fir1Order); num2str(fir1Freq)});
+            {num2str(fir1FiltOrd); num2str(fir1FiltFreq)});
         
         %Last, reset feature options.
         set([filterGUI.filtDesg_desgMeth_grp_filtBtn1, filterGUI.filtDesg_showOrig_grp_yBtn, ...
@@ -940,7 +1004,9 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         set([filterGUI.filtDesg_fir1_filtDataBtn, filterGUI.genOps_saveBtn], 'Enable', 'Off');
     end
 
-    function varList = getVariablesToFilter( ~ )  
+    %% getVariablesToFilter() - Gets variables containing signal data and eligable for filtering from list of MAT-File vars
+    % -----------------------------------------------------------------------------------------------------------------------
+    function varList = getVariablesToFilter()  
         if ismember('filterManifest', fileVariables)
             load(fullFilename, 'filterManifest');
             filterStatus = 1;
@@ -969,8 +1035,10 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         
     end
 
+    %% checkForLegacyManifest() - Alert user if data was previously filtered using legacy filter GUI
+    % -----------------------------------------------------------------------------------------------------------------------
     function checkForLegacyManifest()
-        % If there is not a legacy filter manifest present, continue with initializing filter. Otherwise, alter user of past
+        % If there is not a legacy filter manifest present, continue with initializing filter. Otherwise, alert user of past
         % filtering using legacy systems, and also omitt legacy filter manifest from signal viewer.
         if ~ismember('filterParameters', fileVariables)
             return
@@ -982,12 +1050,14 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         doNotFilter{1,(size(doNotFilter,2)+1)} = 'filterParameters';
     end
 
+    %% updateManifestDisplay() - Updates filter manifest record of selected signal
+    % -----------------------------------------------------------------------------------------------------------------------
     function updateManifestDisplay()
         %Turn on relevent UIControls
         set(allchild(filterGUI.manifDisp_pnl), 'Visible', 'on');
         
         %Enable Set button
-        activateButton(filterGUI.manifDisp_Btn_setDefs);
+        enableUIComp(filterGUI.manifDisp_Btn_setDefs);
         
         manifestDispUIHandles = findall(filterGUI.manifDisp_pnl, 'Tag', 'value');
         manifestValues = {num2str(filterManifest.(tempName).wn); ...
@@ -1004,6 +1074,12 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
                 manifestValues{3} = 'Bandpass';
             case 'stop'
                 manifestValues{3} = 'Bandstop';
+            case 'dc0'
+                manifestValues{3} = 'DC-0';
+            case 'dc1'
+                manifestValues{3} = 'DC-1';
+            otherwise
+                manifestValues{3} = 'Unknown';
         end
         
         %Set was behaving strangley, so I opted for a loop for time.
@@ -1012,12 +1088,16 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         end
     end
 
+    %% resetManifestdisplay() - Resets/hides the contents of the filter manifest panel
+    % -----------------------------------------------------------------------------------------------------------------------
     function resetManifestdisplay()
         manifestUIDispHandles = allchild(filterGUI.manifDisp_pnl);
         set(manifestUIDispHandles, 'Visible', 'off')
     end
 
-    function setDefaultFilterValues(hObject, eventData, handles) %#ok<INUSD>
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
+    function setDefFiltVals(hObject, eventData, handles) %#ok<INUSD>
         switch filterManifest.(tempName).filterType
             case 'low'
                 fir1FilterTypeValue = 1;
@@ -1027,31 +1107,42 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
                 fir1FilterTypeValue = 3;
             case 'stop'
                 fir1FilterTypeValue = 4;
+            case 'dc0'
+                fir1FilterTypeValue = 5;
+            case 'dc1'
+                fir1FilterTypeValue = 6;
+            otherwise
+                % Uh-oh
         end
         
         fir1FilterType = filterManifest.(tempName).filterType;
-        fir1Order  = filterManifest.(tempName).filterOrder;
-        fir1Freq = filterManifest.(tempName).wn;
+        fir1FiltOrd  = filterManifest.(tempName).filterOrder;
+        fir1FiltFreq = filterManifest.(tempName).wn;
         
         filterGUI.filtDesg_fir1_filtTypeSet.Value = fir1FilterTypeValue;
-        filterGUI.filtDesg_fir1_filtOrdSet.String = num2str(fir1Order);
-        filterGUI.filtDesg_fir1_filtWnSet.String = num2str(fir1Freq);
+        filterGUI.filtDesg_fir1_filtOrdSet.String = num2str(fir1FiltOrd);
+        filterGUI.filtDesg_fir1_filtWnSet.String = num2str(fir1FiltFreq);
         
         set([filterGUI.filtDesg_fir1_filtDataBtn, filterGUI.manifDisp_Btn_clrDefs], ...
             'Enable', 'on');
     end
 
+    %% 
+    % -----------------------------------------------------------------------------------------------------------------------
     function clearDefaultFilterValues(hObject, eventData, handles) %#ok<INUSD>
         fir1FilterType      = 'low';
         fir1FilterTypeValue = 1;
-        fir1Order           = [];
-        fir1Freq            = [];
+        fir1FiltOrd         = [];
+        fir1FiltFreq        = [];
         
         filterGUI.manifDisp_Btn_clrDefs.Enable = 'off';
     end
 
 %% Modification of GUI figure properties
-
+% ---------------------------------------------------------------------------------------------------------------------------
+%
+    %% resizeProtection() - Figure resize correcting function and dimensional requirements enforcement
+    % -----------------------------------------------------------------------------------------------------------------------
     function resizeProtection(hObject, eventData, handles) %#ok<INUSD>
         % Two major functions performed by this function. See below.
         
@@ -1096,6 +1187,8 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
         originalFigurePosPixels = currentFigurePosPixels;
     end
 
+    %% extendedDataCursor() - Custom Data Cursor
+    % -----------------------------------------------------------------------------------------------------------------------
     function output_txt = extendedDataCursor(obj,event_obj) %#ok<INUSL>
         % Display the position of the data cursor
         % obj          Currently not used (empty)
@@ -1130,28 +1223,27 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
 
     end
 
-%% GUIComp Wrapper
+%% GUIComp Wrapper & UI Control Related Functions
+% ---------------------------------------------------------------------------------------------------------------------------
 %
-    % Add GUIComp
-    % --------------------------------------------------------------------------
+    %% addGUIComp() - Add GUIComp
+    % -----------------------------------------------------------------------------------------------------------------------
     function addGUIComp(GUICompName)
         %UNTITLED4 Summary of this function goes here
         %   Detailed explanation goes here
             filterGUI(1,1).(GUICompName) = gobjects(1,1);
     end
 
-    % Gets the name of the last GUI component added
-    % --------------------------------------------------------------------------
+    %% getLastGUIComp() - Gets the name of the last GUI component added
+    % -----------------------------------------------------------------------------------------------------------------------
     function lastGUIComp = getLastGUIComp()
         listOfGUIComps = fieldnames(filterGUI);
         lastGUIComp = listOfGUIComps{end,:};
     end
 
-    % Initialize and set most recently created GUI component
-    % --------------------------------------------------------------------------
+    %% setLastGUIComp() - Initialize and set most recently created GUI component
+    % -----------------------------------------------------------------------------------------------------------------------
     function setLastGUIComp(varargin)
-        %UNTITLED4 Summary of this function goes here
-        %   Detailed explanation goes here
         lastGUIComp = getLastGUIComp();
         
         switch varargin{2}
@@ -1164,92 +1256,229 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
             case 'uitable'
                 filterGUI.(lastGUIComp) = uitable(varargin{3:end});
             otherwise
-                error('Invalid UI control type specified. See help for more info.')
+                error('Invalid UI object type specified. See help for more info.')
         end
     end
 
-    % Initialize and set specific GUI component
-    % --------------------------------------------------------------------------
-
-    % Generate arrays of graphical handles for manipulating components en masse
-    % --------------------------------------------------------------------------
-    % See /libCommonFxns/findGUIComps.m or type 'help findGUIComps' for use.
-    
-    % Handle specific set function that is tolerant of java objects
-    % --------------------------------------------------------------------------
-    function setGUIComp(varargin)
+    %% setGUIComp() - Initialize and set specific GUI component
+    % -----------------------------------------------------------------------------------------------------------------------
+    function setGUIComp(varargin) %#ok<DEFNU>
         %
     end
-%
+
+    %% findGUIComps() - Generate arrays of graphical handles for manipulating components en masse
+    % Notes:
+    %   - Placeholder. See /libCommonFxns/findGUIComps.m or type 'help findGUIComps' for use.
+    % -----------------------------------------------------------------------------------------------------------------------
+    % Placeholder. See /libCommonFxns/findGUIComps.m or type 'help findGUIComps' for use.
+
+    %% enableUIComp() - Enables specified uicontrol object
+    % Notes: Created function for mundane task so as to have a method for future behavior expansion.
+    % -----------------------------------------------------------------------------------------------------------------------
+    function enableUIComp(obj)
+        objProperties = set(obj);
+        
+        if isfield(objProperties, 'Enable') && any(contains(objProperties.Enable,'on'))
+            obj.Enable = 'on';
+            drawnow
+        else
+            % May add error trapper in future
+            return
+        end
+    end
+
+    %% disableUIComp() - Disables specified uicontrol object
+    % Notes: Created function for mundane task so as to have a method for future behavior expansion.
+    % -----------------------------------------------------------------------------------------------------------------------
+    function disableUIComp(obj)
+        objProperties = set(obj);
+        
+        if isfield(objProperties, 'Enable') && any(contains(objProperties.Enable,'off'))
+            obj.Enable = 'off';
+            drawnow
+        else
+            % May add error trapper in future
+            return
+        end
+    end
 
 %% Data type conversion
+% ---------------------------------------------------------------------------------------------------------------------------
 %
-    % Data type conversions from java types
-    function outp = jstr2double(inp)
+    %% javastr2double() - str2double for java.lang.string types
+    % -----------------------------------------------------------------------------------------------------------------------
+    function outp = javastr2double(inp)
         outp = str2double(char(inp));
     end
 
-    function outp = javaStr2Num(inp)
+    %% javastr2num() - str2num for java.lang.string types
+    % -----------------------------------------------------------------------------------------------------------------------
+    function outp = javastr2num(inp) %#ok<DEFNU>
         outp = str2num(char(inp)); %#ok<ST2NM>
     end
 
 %% Input Validation Functions
+% Function naming convention: Fxns are prefixed with 'is' if fxn checks for validity, while fxns are prefixed with "validate"
+% if fxn validates something.
+% ---------------------------------------------------------------------------------------------------------------------------
 %
-    % Validation functions for decimation features
-    % --------------------------------------------------------------------------
+    %% isSignalSelected() - Determines if a signal has been selected and its corresponding data loaded
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isSignalSelected()
+        flag = ~isempty(originalData);
+    end
+
+    %% isDecimateInpValid() - Determines if keyboard input for decimation factor is valid 
+    % -----------------------------------------------------------------------------------------------------------------------
     function flag = isDecimateInpValid(inputStr)
         flag = ~isempty(inputStr) && any(ismember(inputStr,[8, 48:57, 96:105]));
     end
 
+    %% isDecimateValid() - Determines if the decimation factor entered is valid
+    % -----------------------------------------------------------------------------------------------------------------------
     function flag = isDecimateValid(inputStr)
         flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) && sign(inputStr) == 1;
     end
 
-    % Validation functions for fir1 filter features
-    % --------------------------------------------------------------------------
-    function flag = isFir1InpValid(hObject, inputStr)
-        switch hObject.Name
-            case 'fir1FilterOrder'
-                allowedChars = [8, 48:57, 96:105];
-            case 'fir1FilterFreq'
-                allowedChars = [8, 32, 44, 46, 48:57, 91, 93, 96:105];
-            otherwise
-                error('Invalid means of invoking isFir1InpValid().');
+    %% isFir1FiltTypeValid() - Determines if selected fir1 filter type is valid
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isFir1FiltTypeValid(varargin)
+        if nargin >= 1 % Check if specified string is valid
+            flag = any(strcmp(varargin{1},{'low','high','bandpass','stop','dc0','dc1'}));
+        else % Check if defined filter type global variable is valid
+            flag = any(strcmp(fir1FilterType,{'low','high','bandpass','stop','dc0','dc1'}));
+        end
+    end
+
+    %% isfir1FiltOrdInpValid - Determines if keyboard input for fir1 filter order is valid
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isfir1FiltOrdInpValid(inputStr)
+        % Allow backspace, enter, 0-9 alphanumeric keys, and 0-9 numpad
+        allowedChars = [8, 10 48:57, 96:105];
+        
+        flag = ~isempty(inputStr) && ismember(inputStr,allowedChars);
+    end
+
+    %% isfir1FiltOrdValid() - Determines if the fir1 filter order is valid
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isfir1FiltOrdValid()
+        % Use sign() == 1 to check if fir1 filter order is greater than 0 (ergo, positive and nonzero)
+        flag = ~isempty(fir1FiltOrd) && ~isnan(fir1FiltOrd) && isreal(fir1FiltOrd) && isscalar(fir1FiltOrd) && isWholeNum(fir1FiltOrd) ...
+            && sign(fir1FiltOrd) == 1;
+    end
+
+
+    %% isfir1FiltFreqInpValid() - Determines if keyboard input for fir1 filter frequency is valid
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isfir1FiltFreqInpValid(inputStr)
+        % Allow backspace, enter, space, comma, alphanumeric period, numpad period, 0-9 alphanumeric keys, 
+        % opening bracket ([}, closing bracket (]), and 0-9 numpad
+        allowedChars = [8, 10, 32, 44, 46, 110 48:57, 91, 93, 96:105];
+        
+        flag = ~isempty(inputStr) && ismember(inputStr,allowedChars);
+    end
+    
+    %% isfir1FiltFreqInpValid() - Determines if keyboard input for fir1 filter frequency is valid
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isfir1FiltFreqValid()
+        flag = fir1FiltFreqType ~= 0 && ~isempty(fir1FiltFreq);
+    end
+
+    %% validateFir1FiltFreq() - Validation for fir1 filter frequencies
+    % -----------------------------------------------------------------------------------------------------------------------
+    function [fir1FiltFreqs, fir1FiltType] = validateFir1FiltFreq(inputStr)
+        % TMK, str2num is the easiest way to do this. Controlled enviroment mitigates any security risk as well.
+        fir1FiltFreqs = str2num(inputStr); %#ok<ST2NM>
+        
+        % Check that input is valid
+        if isempty(fir1FiltFreqs) || ~isreal(fir1FiltFreqs)
+            fir1FiltFreqs = [];
+            fir1FiltType = 0;
+            return
         end
         
-        flag = ~isempty(inputStr) && any(ismember(inputStr,allowedChars));
-    end
-
-    function flag = isFir1FilterTypeValid(inputStr)
-        flag = any(strcmp(inputStr,{'low','high','bandpass','stop'}));
-    end
-
-    function flag = isFir1FilterOrderValid(inputStr)
-        flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) ...
-            && rem(inputStr,1) == 0 && sign(inputStr) == 1;
-    end
-
-    function flag = isFir1FilterFreqValid(inputStr)
-        if all(strcmp(char(inputStr),{'[',']'})) %check if row or some shit
-            % Welcome to the shit show
-        else
-            flag = ~isempty(inputStr) && ~isnan(inputStr) && isnumeric(inputStr) && isscalar(inputStr) ...
-                && sign(inputStr) == 1 && inputStr > 0 && inputStr <= 1;
+        % Force row array just to be safe
+        fir1FiltFreqs = reshape(fir1FiltFreqs',1,[]);
+        
+        % Determine if frequency(ies) is/are between 0 and 1,
+        if ~all(fir1FiltFreqs > 0) || ~all(fir1FiltFreqs < 1)
+            fir1FiltFreqs = [];
+            fir1FiltType = 0;
+            return
         end
+        
+        fir1FiltFreqsLength = length(fir1FiltFreqs);
+        
+        % Make sure if multiple frequencies are present that they are monotonically increasing
+        if fir1FiltFreqsLength > 1 && any(diff(fir1FiltFreqs)<=0)
+            fir1FiltFreqs = [];
+            fir1FiltType = 0;
+            return
+        end
+        
+        % Determine type
+        if fir1FiltFreqsLength == 1 % lowpass/highpass filter
+            fir1FiltType = 1;
+        elseif fir1FiltFreqsLength == 2 % bandpass/bandstop filter
+            fir1FiltType = 2;
+        elseif fir1FiltFreqsLength >= 3 % multiband filter
+            fir1FiltType = 3;
+        else % Fail-safe (error)
+            fir1FiltFreqs = [];
+            fir1FiltType = 0;
+            return
+        end
+    end
+
+    %% isFir1FiltFreqTypeCompatible() - Determines if the filter type inferred by the specified fir1 filter frequency(ies)
+    %                                   are in agreement with the filter type chosen in the filter type popupmenu
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isFir1FiltFreqTypeCompatible()        
+        if fir1FiltFreqType == 1 && any(strcmp(fir1FilterType, {'low','high'}))
+            flag = true;
+        elseif fir1FiltFreqType == 2 && any(strcmp(fir1FilterType, {'bandpass','stop'}))
+            flag = true;
+        elseif fir1FiltFreqType == 3 && any(strcmp(fir1FilterType, {'dc0','dc1'}))
+            flag = true;
+        else
+            flag = false;
+        end
+    end
+
+    %% isFir1FiltDesgValid() - Returns whether the fir1 filter design parameters are valid and filtering prereqs met
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isFir1FiltDesgValid()
+        flag = isFir1FiltTypeValid() && isfir1FiltOrdValid() && isfir1FiltFreqValid() && isFir1FiltFreqTypeCompatible() ...
+            && isSignalSelected();
+    end
+
+    %% isWholeNum() - Determines whether input is a whole number
+    % Notes: 
+    %   - Accepts numeric arrays and unreal numbers. Returns false for nonnumeric, NaN, (+/-)Inf, or non-whole numbers.
+    %   - The method used to determine if the input argument is a whole number (inputStr == floor(inputStr)) is significantly
+    %     faster than mod() or rem() based methods and contains fewer behavioral quarks. However, it does fail for NaN or 
+    %     (+/-)Inf values and, when combined with validation against those cases, is only a slight improvement. Moreover,
+    %     non-numeric input can cause this method to fail and, once isnumeric() is included, performance decreases to roughly
+    %     ~20% less than mod() or rem() based methods. Regardless, the general stability of the chosen method's behavior
+    %     and the simplicity of its use in this script ultimatly influenced its use here.
+    % -----------------------------------------------------------------------------------------------------------------------
+    function flag = isWholeNum(inputStr)
+        flag = isnumeric(inputStr) && ~isnan(inputStr) && ~isinf(inputStr) && (inputStr == floor(inputStr));
     end
 %
 
 %% Set variable functions
+% ---------------------------------------------------------------------------------------------------------------------------
 %
-    % Set Variable functions for spectral analysis
-    % --------------------------------------------------------------------------
+    %% setDecimationFactor() - Set decimation factor global variable
+    % -----------------------------------------------------------------------------------------------------------------------
     function setDecimationFactor(hObject)
-        decimationFactor = jstr2double(hObject.getText);
+        decimationFactor = javastr2double(hObject.getText);
     end
     
-    % Set variable functions for fir1 filter
-    % --------------------------------------------------------------------------
-    function setFir1FilterType(hObject)
+    %% setFir1FiltType() - Set fir1 filter type global variable
+    % -----------------------------------------------------------------------------------------------------------------------
+    function setFir1FiltType(hObject)
         switch hObject.String{hObject.Value}
             case 'Lowpass'
                 fir1FilterType = 'low';
@@ -1259,21 +1488,53 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FilterHandl
                 fir1FilterType = 'bandpass';
             case 'Bandstop'
                 fir1FilterType = 'stop';
+            case 'DC-0'
+                fir1FilterType = 'dc0';
+            case 'DC-1'
+                fir1FilterType = 'dc1';                
             otherwise
                 warning('Invalid fir1 filter type')
         end
     end
-
-    function setFir1FilterOrder(inputStr)
-    	fir1Order = jstr2double(inputStr);
-    end
-
-    function setFir1FilterFreq(inputStr)      
-        if all(strcmp(inputStr,{'[',']'}))
-            fir1Freq = jstr2num(inputStr);
+    
+    %% setFir1FiltOrd - Set fir1 filter order global variable
+    % -----------------------------------------------------------------------------------------------------------------------    
+    function setFir1FiltOrd(inputStr)
+        if isa(inputStr, 'java.lang.String')
+            % If the input is a java reference, perform appropriate conversion. It is assumed that this contains validated due to
+            % validation that occurs prior to invoking this function in such circumstances.
+            fir1FiltOrd = javastr2double(inputStr);
         else
-            fir1Freq = jstr2double(inputStr);
+            % Ortherwise, assume properly validated and typecast variable being input, and assign directly to global.
+            fir1FiltOrd = inputStr;
         end
     end
+
+    %% setFir1FiltFreq() - Set fir1 filter frequency(ies) global variable
+    % -----------------------------------------------------------------------------------------------------------------------
+    function setFir1FiltFreq(inputStr)
+        fir1FiltFreq = inputStr;
+    end
+
+    %% setFir1FiltFreqType() - Set fir1 filter type global variable that corresponds with the frequency(ies) specified
+    % -----------------------------------------------------------------------------------------------------------------------
+    function setFir1FiltFreqType(inputStr)
+        fir1FiltFreqType = inputStr;
+    end
+end % end for Step2_DataFilterGUI() function
+
 %
-end
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
+%
