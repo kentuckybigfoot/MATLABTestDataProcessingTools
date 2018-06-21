@@ -242,7 +242,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         
         % Quick fix to correct filter button dissapearing once a default is set and then a different record is chosen
         if all([~isempty(fir1FilterType), ~isempty(fir1FilterTypeValue), ~isempty(fir1FiltOrd), ~isempty(fir1FiltFreq)])
-            filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'on';
+            enableGUIComp('filtDesg_fir1_filtDataBtn');
         end
     end
 
@@ -450,7 +450,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             fir1FilterData();
         else
             % Somehow in this function by mistake. Disable filter button.
-            filterGUI.filtDesg_fir1_filtDataBtn.Enable = 'Off';
+            disableGUIComp('filtDesg_fir1_filtDataBtn');
         end
     end
 
@@ -563,7 +563,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         %Next, Remove old values
         filteredData = [];
         setGUIComp('filtDesg_fir1_filtTypeSet', 'Value', fir1FilterTypeValue);
-        set([filterGUI.filtDesg_fir1_filtOrdSet, filterGUI.filtDesg_fir1_filtWnSet], {'String'}, ...
+        setGUIComp({'filtDesg_fir1_filtOrdSet', 'filtDesg_fir1_filtWnSet'}, {'String'}, ...
             {num2str(fir1FiltOrd); num2str(fir1FiltFreq)});
         
         %Last, reset feature options.
@@ -690,9 +690,9 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         fir1FiltOrd  = filterManifest.(tempName).filterOrder;
         fir1FiltFreq = filterManifest.(tempName).wn;
         
-        filterGUI.filtDesg_fir1_filtTypeSet.Value = fir1FilterTypeValue;
-        filterGUI.filtDesg_fir1_filtOrdSet.String = num2str(fir1FiltOrd);
-        filterGUI.filtDesg_fir1_filtWnSet.String = num2str(fir1FiltFreq);
+        setGUIComp('filtDesg_fir1_filtTypeSet', 'Value', fir1FilterTypeValue);
+        setGUIComp({'filtDesg_fir1_filtOrdSet', 'filtDesg_fir1_filtWnSet'}, {'String'}, ...
+            {num2str(fir1FiltOrd), num2str(fir1FiltFreq)});
         
         enableGUIComp({'filtDesg_fir1_filtDataBtn', 'manifDisp_Btn_clrDefs'});
     end
@@ -705,7 +705,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         fir1FiltOrd         = [];
         fir1FiltFreq        = [];
         
-        filterGUI.manifDisp_Btn_clrDefs.Enable = 'off';
+        disableGUIComp('manifDisp_Btn_clrDefs');
     end
 
 %% Modification of GUI figure properties
