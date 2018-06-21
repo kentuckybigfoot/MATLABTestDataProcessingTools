@@ -1,0 +1,20 @@
+-- General
+	- ADD isWholeNum() from DataFilterGUI to libcommonfxn
+	
+-- initializeSuite.m
+	- FIX prefs adjustments 
+	- FIX packages warning
+
+-- ImportRAWFiles
+	- FIX limitation of Run parameter position being set in findRawsInDirectory()
+	- FIX PI6600RawToM.m incorrect 4th, 5th, etc calibration factors being input
+    - FIX PI6600RawToM.m investigate removing this.Datawidths(ScanIndex) == 4 in input
+	
+-- DataFilterGUI
+	- INVESTIGATE behavior of validateGUICompObjs() when array of objects contains an empty record
+	- INVESTIGATE filtering, decimation, and other errors being displayed in dialog box
+	- INVESTIGATE Downsample Vs. Decimate
+	- FUTURE: Allow user to specify yLabelString and default x-axis variable in setup params
+
+-- 	DataProcessing
+	- ADD check for variables needed to execute processes before process occurs.
