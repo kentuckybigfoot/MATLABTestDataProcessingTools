@@ -26,7 +26,8 @@ doNotFilter = {'NormTime', 'Run', 'importManifest', 'filterManifest', 'filterPar
 fullFilename = fullfile(fileDir,filename);
 
 m = matfile(fullFilename, 'Writable', true);
-fileVariables = who('-file', fullFilename);
+fileInfo = whos(m);
+fileVariables = {fileInfo.name}.';
 
 % Check if signals were previously filtered using legacy system.
 checkForLegacyManifest();
@@ -97,8 +98,8 @@ filterAxes.fig.NumberTitle = 'off';
 filterAxes.fig.Name = sprintf('Step2_DataFilterGUI - Opened: %s', filename);
 
 % Define axes and axes' children
-filterAxes.axes1 = axes('Parent', filterAxes.fig, 'Position', [0.04,0.565,0.75,0.40]);
-filterAxes.axes2 = axes('Parent', filterAxes.fig, 'Position', [0.04,0.065,0.75,0.40]);
+filterAxes.axes1 = axes('Parent', filterAxes.fig, 'Position', [0.0400, 0.5650, 0.7600, 0.4000]);
+filterAxes.axes2 = axes('Parent', filterAxes.fig, 'Position', [0.0400, 0.0650, 0.7600, 0.4000]);
 filterAxes.p1 = line(filterAxes.axes1, NaN, NaN);
 filterAxes.p2 = line(filterAxes.axes1, NaN, NaN, 'Color', [0.8500, 0.3250, 0.0980]);
 filterAxes.p3 = line(filterAxes.axes2, NaN, NaN);
@@ -137,6 +138,7 @@ plotProps.XGrid = 'on';
 plotProps.YGrid = 'on';
 plotProps.XMinorGrid = 'on';
 plotProps.YMinorGrid = 'on';
+plotProps.Box = 'on';
 set([filterAxes.axes1, filterAxes.axes2], plotProps);
 
 % Get list of variables contained within MAT-file specified to be read by this script/GUI
@@ -187,6 +189,9 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         varName = signalList{eventData.Indices(1,1)};
         originalData = m.(varName);
         
+        % Get current Tightinset to use later in preventing axis label clipping
+        initTightInset = filterAxes.axes1.TightInset;
+        
         % Check if this is the user's first variable selection. If it is, proceed to initial signal plotting. If not, user
         % is switching fromone variable to the other, and script must reset.
         if ~isempty(varNameOld) && ~strcmp(varNameOld, varName)
@@ -201,7 +206,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         
         % Adjust axis to remove whitespace
         axis(filterAxes.axes1, [min(m.NormTime)-250, max(m.NormTime)+250, filterAxes.axes1.YLim])
-        
+                
         % Determine y-axis representation using variable name/type
         if contains(varName,'sg')
             yLabelString = ['Strain Gauge Reading (',char(181),char(603),')'];
@@ -217,6 +222,15 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         title(filterAxes.axes1, sprintf('Plot of %s vs. Normal Time', varName));
         filterAxes.axes1.XLabel.String = 'Time (sec)';
         filterAxes.axes1.YLabel.String = yLabelString;
+        
+        % Adjust left position and width of Signal Axes to prevent axis label clipping.
+        if filterAxes.axes1.TightInset(1) > 0.04
+            axesPos = [filterAxes.axes1.Position; filterAxes.axes2.Position];
+            posIncr = (filterAxes.axes1.TightInset(1)-initTightInset(1));
+            
+            filterAxes.axes1.Position([1,3]) = [axesPos(1,1) + posIncr, axesPos(1,3) - posIncr];
+            filterAxes.axes2.Position([1,3]) = [axesPos(2,1) + posIncr, axesPos(2,3) - posIncr];
+        end
         
         % Make sure the correct options are avaliable
         enableGUIComp({'SDE_anlzBtns', 'filtDesg_fir1_filtTypeSet', 'filtDesg_fir1_filtOrdSet', 'filtDesg_fir1_filtWnSet'});
@@ -486,8 +500,6 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
     %% saveFilteredData() - Replaces variable of selected signal data with its filtered version
     % -----------------------------------------------------------------------------------------------------------------------
     function saveFilteredData(hObject, eventData, handles) %#ok<INUSD>
-        %Don't forget to include a legacy script/upgrade for old filter method....
-        
         if ismember('filterManifest', fileVariables)
             load(fullFilename, 'filterManifest');
         else
@@ -501,9 +513,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         m.filterManifest = filterManifest;
         m.(varName) = filteredData;
         
-        %A lazy way to assure data saved, and that the variable list now
-        %reflects the variable's been filtered, but is computational
-        %expensive considering.
+        %A lazy way to assure data saved, and that the variable list now reflects the variable's been filtered
         signalList = signalsListHandler();
     end
 
@@ -570,6 +580,11 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         signalList(:,2) = {'No'};
         
         % If a filter manifest exists, load it, and then indicate which signals, if any, have been filtered.
+        % Note that the method used to determine if a filter manifest is present is the fastest of 4 tested:
+        % Case 1: 1st Exec - 2.543e-03, 1k Exec Mean - 4.809e-05, Method: ismember('filterManifest', fileVariables);
+        % Case 2: 1st Exec - 1.387e-03, 1k Exec Mean - 1.207e-05, Method: any(contains(fileVariables,'filterManifest'));
+        % Case 3: 1st Exec - 1.622e-03, 1k Exec Mean - 1.188e-04, Method: find(strcmp(fileVariables,'filterManifest'));
+        % Case 4: 1st Exec - 1.312e-03, 1k Exec Mean - 9.438e-06, Method: any(strcmp(fileVariables,'filterManifest'));
         if any(strcmp(fileVariables,'filterManifest'))
             load(fullFilename, 'filterManifest');
             filtSgnls = fieldnames(filterManifest);
@@ -577,9 +592,16 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             signalList(filtSgnlsIdx,2) = {'Yes'};
         end
         
-        % Remove entries in doNotFilter from Signals Viewer list. Note that interesect method is faster than ismember+cleanup
+        % Find entries in doNotFilter from Signals Viewer list. Note that interesect method is faster than ismember+cleanup
         [~,rmvSgnlIdx,~] = intersect(signalList,doNotFilter);
-        signalList(rmvSgnlIdx,:) = [];
+        
+        % Find entries that are not vectors
+        sgnlLstSz = vertcat(fileInfo.size);
+        sgnlLstSzIdx = find(sgnlLstSz(:,2) > 1 & sgnlLstSz(:,2) > 1 | diff(sgnlLstSz,1,2) == 0);
+        
+        % Combine indices lists for non-vectorial and doNotFilter entries
+        rmvIdx = union(sgnlLstSzIdx,rmvSgnlIdx);
+        signalList(rmvIdx,:) = [];
         
         setGUIComp('genOps_varTbl', 'Data', signalList);
     end
@@ -697,13 +719,18 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         %Get position of FilterGUI fig in pixels
         currentFigurePosPixels = getpixelposition(filterAxes.fig);
         
+        % Prevents invocation of this function upon initial script run.
+        if currentFigurePosPixels(3:4) == originalFigurePosPixels(3:4)
+            return
+        end
+        
         % 1) A very lackadaisical/non-deterministic way of assuring that the GUI is not shrunk down to a size that obscures
-        %    the view of features/options. Note that his could cause the close button to be outside the display area of the 
-        %    screen display, but displays with a resolution of 1280x1024 aren't prevelent, especially on the Auburn 
-        %    University Campus.
+        %    the view of features/options. Ultimately, the effort, nor overcoming my laziness, are worth the time to actually
+        %    determine the true dimensions at which the GUI becomes too small. Literally, it takes a lot of effort the way
+        %    that MATLAB defines these parameters.
         %
-        %    In summary, it is both not worth the effort or overcoming my laziness to actually determine the true dimensions 
-        %    at which the GUI becomes too small. Literally, it takes a lot of effort the way that MATLAB defines these parameters.
+        %    Note: This could cause the close button to be outside the display area of the screen display, but displays with
+        %    a resolution of 1280x1024 aren't prevelent, especially on the Auburn University Campus.
         
         %If width is smaller than that specified, resize to minimum width
         if currentFigurePosPixels(3) < 1245
@@ -722,13 +749,33 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
         %    resized for whatever reason. Note that the 1264 value is the width (in pixels) of the GUI figure used to obtain
         %    the normalized positions used. Development initially took place on a computer with a Dell 1908FPb display with
         %    a set resolution of 1280x1024 and scaling at 100% in Windows 7.
-        UIPanelHandles = findobj(0, 'Type', 'uipanel', '-or', 'Type', 'uitable');
+        UIPnlObjs = findobj(0, 'Type', 'uipanel', '-or', 'Type', 'uitable');
+        UIPnlObjsSize = size(UIPnlObjs,1);
+        rszPnlChgs = zeros(UIPnlObjsSize,2);
         
-        for r = 1:size(UIPanelHandles,1)
-            resizedPanelWidthPos = (UIPanelHandles(r).Position(3)*originalFigurePosPixels(3))/currentFigurePosPixels(3);
-            resizedPanelHeightPos = (UIPanelHandles(r).Position(4)*originalFigurePosPixels(4))/currentFigurePosPixels(4);
+        for r = UIPnlObjsSize:-1:1
+            % Calculate new normalized positions
+            resizedPanelWidthPos = (UIPnlObjs(r).Position(3)*originalFigurePosPixels(3))/currentFigurePosPixels(3);
+            resizedPanelHeightPos = (UIPnlObjs(r).Position(4)*originalFigurePosPixels(4))/currentFigurePosPixels(4);
+            resizedPanelLeftPos = UIPnlObjs(r).Position(1) + (UIPnlObjs(r).Position(3)-resizedPanelWidthPos);
+            if r == UIPnlObjsSize
+                resizedPanelBotPos = UIPnlObjs(r).Position(2) + (UIPnlObjs(r).Position(4)-resizedPanelHeightPos);
+            else
+                resizedPanelBotPos = (UIPnlObjs(r+1).Position(2) - 0.007) - resizedPanelHeightPos;
+            end
             
-            UIPanelHandles(r).Position(3:4) = [resizedPanelWidthPos, resizedPanelHeightPos];
+            % Change in width to be used for resizing axes, height just for tracking
+            rszPnlChgs(r,1:2) = [(UIPnlObjs(r).Position(3) - resizedPanelWidthPos), ...
+                (UIPnlObjs(r).Position(4)-resizedPanelHeightPos)];
+            
+            % Apply new normalized positions
+            UIPnlObjs(r).Position = [resizedPanelLeftPos, resizedPanelBotPos ,resizedPanelWidthPos, resizedPanelHeightPos];
+        end
+        
+        % If all of the UI Panel objects were identically resized, correct size of axes
+        if ~any(diff(rszPnlChgs(:,1)))
+            filterAxes.axes1.Position(3) = filterAxes.axes1.Position(3) + rszPnlChgs(1,1);
+            filterAxes.axes2.Position(3) = filterAxes.axes2.Position(3) + rszPnlChgs(1,1);
         end
         
         %Update to reflect size change
@@ -1220,7 +1267,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             'Parent', filterAxes.fig, ...
             'Title', 'Spectral Analysis Options', ...
             'Units', 'normalized', ...
-            'Position', [0.8 0.872 0.182 0.1]);
+            'Position', [0.8100 0.8720 0.1820 0.1000]);
 
         % Decimation
         initGUIComp('SDE_dcmtn_txt');
@@ -1305,7 +1352,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             'Parent', filterAxes.fig, ...
             'Title', 'Filter Design', ...
             'Units', 'normalized', ...
-            'Position', [0.8000 0.6450 0.1820 0.2200]);
+            'Position', [0.8100 0.6450 0.1820 0.2200]);
         
         % Filter Type
         initGUIComp('filtDesg_desgMeth_txt');
@@ -1544,7 +1591,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             'Parent', filterAxes.fig, ...
             'Title', 'Filter Manifest Entry Viewer', ...
             'Units', 'normalized', ...
-            'Position', [0.8000 0.5090 0.1820 0.129]);
+            'Position', [0.8100 0.5090 0.1820 0.129]);
         
         initGUIComp('manifDisp_txt_filtMeth');
         createLastGUIComp( ...
@@ -1658,7 +1705,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             'Parent', filterAxes.fig, ...
             'BorderType', 'none', ...
             'Units', 'normalized', ...
-            'Position', [0.8000 0.4700 0.1820 0.028]);
+            'Position', [0.8100 0.4700 0.1820 0.028]);
         
         initGUIComp('genOps_saveBtn');
         createLastGUIComp( ...
@@ -1684,7 +1731,7 @@ set(filterGUI.filtDesg_fir1_filtWnSetObj, 'KeyPressedCallback', @fir1FiltFreqHan
             'Type', 'uitable', ...
             'Parent', filterAxes.fig, ...
             'Unit', 'normalized', ...
-            'Position', [0.8000, 0.06500, 0.1800, 0.4000],...
+            'Position', [0.8100, 0.06500, 0.1820, 0.4000],...
             'ColumnName', {'Variable Name', 'Filtered?'}, ...
             'ColumnWidth', {100, 'auto'}, ...
             'CellSelectionCallback', @initPlot);
